@@ -35,7 +35,7 @@ typedef struct SysInfo {
 typedef enum ProcessStatus: uint8_t {
   Waiting, 
   Running, 
-  WaitingForBurying, 
+  Zombie, 
 } ProcessStatus;
 
 typedef struct ProcessInfo {
@@ -43,6 +43,13 @@ typedef struct ProcessInfo {
   uint64_t pid;
   uint8_t name[64];
   ProcessStatus status;
+  size_t resource_count;
+  size_t exit_code;
+  size_t exit_addr;
+  size_t exit_stack_addr;
+  uint64_t killed_by;
+  size_t data_start;
+  size_t data_break;
 } ProcessInfo;
 
 typedef struct OsStr {

@@ -8,5 +8,6 @@
 
 #include "raw.h"
 SysInfo *sysinfo();
+ssize_t pcollect(ProcessInfo *arg0, size_t arg1);
 
 #endif

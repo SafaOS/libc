@@ -16,5 +16,7 @@ ssize_t read(ssize_t arg0, uint8_t *arg1, size_t arg2);
 ssize_t write(ssize_t arg0, const uint8_t *arg1, size_t arg2);
 ssize_t create(const uint8_t *arg0, size_t arg1);
 ssize_t createdir(const uint8_t *arg0, size_t arg1);
+ssize_t chdir(const uint8_t *arg0, size_t arg1);
+ssize_t getcwd(const uint8_t *arg0, size_t arg1);
 
 #endif
