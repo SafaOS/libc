@@ -29,9 +29,11 @@ pub const Error = error{
     Busy,
     NotEnoughArguments,
     // iso
+    StreamTooLong,
+    StreamTooShort,
+    EndOfStream,
     ArgumentOutOfDomain,
     IllegalByteSequence,
-    ResultOutOfRange,
     // method to identify the enum max
     Last,
 };
