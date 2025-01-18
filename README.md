@@ -17,4 +17,3 @@ i choose zig instead of rust because it is a more low-level language, which is m
 - provide a basic libc for userspace, that is at least able to sustain rust std
 - make it easy to write userspace programs in zig for now; this means that it can have extra zig execulsive features
 - automatically generate the headers from the zig code.
-
