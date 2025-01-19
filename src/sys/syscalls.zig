@@ -117,14 +117,6 @@ pub inline fn getcwd(ptr: [*]const u8, len: usize, dest_len_got: *usize) usize {
     return syscall3(15, @intFromPtr(ptr), len, @intFromPtr(dest_len_got));
 }
 
-pub inline fn info(ptr: *raw.SysInfo) usize {
-    return syscall1(16, @intFromPtr(ptr));
-}
-
-pub inline fn pcollect(ptr: *raw.ProcessInfo, len: usize) usize {
-    return syscall3(17, @intFromPtr(ptr), len, 0);
-}
-
 pub inline fn sbrk(amount: isize) ?*u8 {
     return @ptrFromInt(syscall1(18, @bitCast(amount)));
 }
