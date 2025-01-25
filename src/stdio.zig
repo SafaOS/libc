@@ -46,8 +46,12 @@ pub const Writer = struct {
     }
 
     pub fn write(self: *const Writer, buf: []const u8) errors.Error!void {
+        if (buf.len == 0) return;
+
         try self.check();
         _ = try io.zwrite(self.file.fd, buf);
+
+        if (buf[buf.len - 1] == '\n') try self.file.flush();
     }
 
     pub fn writeByte(self: *const Writer, c: u8) errors.Error!void {
@@ -323,6 +327,10 @@ pub const FILE = extern struct {
 
     pub fn close(file: *FILE) void {
         file.closeChecked() catch unreachable;
+    }
+
+    pub fn flush(file: *FILE) errors.Error!void {
+        try io.zsync(@bitCast(file.fd));
     }
 
     pub fn writer(self: *FILE) Writer {

@@ -117,6 +117,10 @@ pub inline fn getcwd(ptr: [*]const u8, len: usize, dest_len_got: *usize) usize {
     return syscall3(15, @intFromPtr(ptr), len, @intFromPtr(dest_len_got));
 }
 
+pub inline fn sync(ri: usize) usize {
+    return syscall1(16, ri);
+}
+
 pub inline fn sbrk(amount: isize) ?*u8 {
     return @ptrFromInt(syscall1(18, @bitCast(amount)));
 }

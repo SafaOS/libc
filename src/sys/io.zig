@@ -193,3 +193,12 @@ pub fn zchdir(path: []const u8) errors.Error!void {
     const err = chdir(@ptrCast(path.ptr), path.len);
     if (err == -1) return errors.geterr();
 }
+
+pub fn zsync(ri: usize) errors.Error!void {
+    const err: u16 = @intCast(syscalls.sync(ri));
+
+    if (err != 0) {
+        const err_t: errors.Error = @errorCast(@errorFromInt(err));
+        return err_t;
+    }
+}
