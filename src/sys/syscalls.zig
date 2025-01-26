@@ -58,7 +58,7 @@ pub inline fn exit(code: usize) void {
 }
 
 pub inline fn yield() void {
-    _ = syscall1(1);
+    _ = syscall0(1);
 }
 
 pub inline fn open(path: *const u8, len: usize, fd: *usize) usize {
