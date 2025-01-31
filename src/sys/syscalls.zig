@@ -40,6 +40,20 @@ inline fn syscall4(number: usize, arg1: usize, arg2: usize, arg3: usize, arg4: u
         : "r8", "r11"
     );
 }
+
+inline fn syscall5(number: usize, arg1: usize, arg2: usize, arg3: usize, arg4: usize, arg5: usize) usize {
+    return asm volatile ("int $0x80"
+        : [ret] "={rax}" (-> usize),
+        : [number] "{rax}" (number),
+          [arg1] "{rdi}" (arg1),
+          [arg2] "{rsi}" (arg2),
+          [arg3] "{rdx}" (arg3),
+          [arg4] "{rcx}" (arg4),
+          [arg5] "{r8}" (arg5),
+        : "r9", "r11"
+    );
+}
+
 inline fn syscall6(number: usize, arg1: usize, arg2: usize, arg3: usize, arg4: usize, arg5: usize, arg6: usize) usize {
     return asm volatile ("int $0x80"
         : [ret] "={rax}" (-> usize),
@@ -65,12 +79,12 @@ pub inline fn open(path: *const u8, len: usize, fd: *usize) usize {
     return syscall3(2, @intFromPtr(path), len, @intFromPtr(fd));
 }
 
-pub inline fn write(fd: usize, ptr: *const u8, len: usize) usize {
-    return syscall4(3, fd, @intFromPtr(ptr), len, 0);
+pub inline fn write(fd: usize, offset: isize, ptr: *const u8, len: usize, num_written: *usize) usize {
+    return syscall5(3, fd, @bitCast(offset), @intFromPtr(ptr), len, @intFromPtr(num_written));
 }
 
-pub inline fn read(fd: usize, ptr: *u8, len: usize, num_read: *usize) usize {
-    return syscall4(4, fd, @intFromPtr(ptr), len, @intFromPtr(num_read));
+pub inline fn read(fd: usize, offset: isize, ptr: *u8, len: usize, num_read: *usize) usize {
+    return syscall5(4, fd, @bitCast(offset), @intFromPtr(ptr), len, @intFromPtr(num_read));
 }
 
 pub inline fn close(fd: usize) usize {
@@ -119,6 +133,10 @@ pub inline fn getcwd(ptr: [*]const u8, len: usize, dest_len_got: *usize) usize {
 
 pub inline fn sync(ri: usize) usize {
     return syscall1(16, ri);
+}
+
+pub inline fn truncate(ri: usize, len: usize) usize {
+    return syscall3(17, ri, len, 0);
 }
 
 pub inline fn sbrk(amount: isize) ?*u8 {
