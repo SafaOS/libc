@@ -1,5 +1,53 @@
 const sbrk = @import("sys/mem.zig").zsbrk;
 const memcpy = @import("string.zig").memcpy;
+const std = @import("std");
+
+pub const c_allocator = std.mem.Allocator{
+    .ptr = undefined,
+    .vtable = &c_allocator_vtable,
+};
+
+const c_allocator_vtable = std.mem.Allocator.VTable{
+    .alloc = c_alloc,
+    .resize = c_realloc,
+    .free = c_free,
+};
+
+fn c_alloc(
+    _: *anyopaque,
+    len: usize,
+    _: u8,
+    _: usize,
+) ?[*]u8 {
+    const results = zalloc(u8, len) catch return null;
+    return results.ptr;
+}
+
+fn c_free(
+    _: *anyopaque,
+    ptr: []u8,
+    _: u8,
+    _: usize,
+) void {
+    free(@ptrCast(ptr.ptr));
+}
+
+fn c_realloc(
+    _: *anyopaque,
+    ptr: []u8,
+    _: u8,
+    new_len: usize,
+    _: usize,
+) bool {
+    const new_ptr = zrealloc(u8, ptr, new_len) orelse return false;
+
+    if (new_ptr.ptr != ptr.ptr) {
+        free(ptr.ptr);
+        return false;
+    }
+
+    return true;
+}
 
 const INIT_SIZE = 4096;
 const MALLOC_SIZE_ALIGN = 16;

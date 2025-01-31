@@ -34,22 +34,23 @@ pub export fn exit(code: usize) noreturn {
 pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace, return_addr: ?usize) noreturn {
     @setCold(true);
     const at = return_addr orelse @returnAddress();
-    stdio.zprintf("\x1B[38;2;200;0;0mlibc panic: %.*s at %p <??>\n", .{ msg.len, msg.ptr, at }) catch {};
 
-    stdio.zprintf("trace:\n", .{}) catch {};
+    stdio.zprintf("\x1B[38;2;200;0;0mlibc panic: {s} at 0x{x} <??>\n", .{ msg, at });
+    stdio.zprintf("trace:\n", .{});
+
     if (error_return_trace) |trace| {
         const addresses = trace.instruction_addresses;
 
         for (addresses) |address| {
-            stdio.zprintf("  <%p>\n", .{address}) catch {};
+            stdio.zprintf("  <0x{x}>\n", .{address});
         }
     } else {
         var rbp: ?[*]usize = @ptrFromInt(@frameAddress());
         while (rbp != null) : (rbp = @ptrFromInt(rbp.?[0])) {
-            stdio.zprintf("  %p <??>\n", .{rbp.?[1]}) catch {};
+            stdio.zprintf("  0x{x} <??>\n", .{rbp.?[1]});
         }
     }
-    stdio.zprintf("\x1B[0m", .{}) catch {};
+    stdio.zprintf("\x1B[0m", .{});
 
     exit(1);
 }

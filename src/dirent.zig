@@ -8,8 +8,8 @@ const seterr = errors.seterr;
 pub const raw = @import("sys/raw.zig");
 pub const DIR = extern struct {
     current_index: usize = 0,
-    ri: isize,
-    dir_ri: isize,
+    ri: usize,
+    dir_ri: usize,
 
     pub fn open(path: []const u8) errors.Error!*DIR {
         const dir_ri = try io.zopen(path);
