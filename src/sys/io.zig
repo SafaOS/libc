@@ -3,39 +3,36 @@ const errors = @import("errno.zig");
 const stdio = @import("../stdio.zig");
 pub const raw = @import("raw.zig");
 
-pub fn open(path: *const u8, len: usize) isize {
-    var fd: usize = undefined;
+export fn open(path: *const u8, len: usize) isize {
+    const path_buf: [*]const u8 = @ptrCast(path);
 
-    const err = syscalls.open(path, len, &fd);
-    if (err != 0) {
-        errors.errno = @truncate(err);
+    const fd = zopen(path_buf[0..len]) catch |err| {
+        const errno: u16 = @intFromError(err);
+        errors.errno = @intCast(errno);
         return -1;
-    }
+    };
     return @bitCast(fd);
 }
 
-pub export fn close(fd: isize) isize {
-    const err = syscalls.close(@bitCast(fd));
-    if (err != 0) {
-        errors.errno = @truncate(err);
+export fn close(fd: isize) isize {
+    zclose(@bitCast(fd)) catch |err| {
+        const errno: u16 = @intFromError(err);
+        errors.errno = @intCast(errno);
         return -1;
-    }
+    };
     return 0;
 }
 
-pub export fn diriter_open(dir: isize) isize {
-    var diriter: usize = undefined;
-    const err = syscalls.diriter_open(@bitCast(dir), &diriter);
-
-    if (err != 0) {
-        errors.errno = @truncate(err);
+export fn diriter_open(dir: usize) isize {
+    const diriter = zdiriter_open(dir) catch |err| {
+        const errno: u16 = @intFromError(err);
+        errors.errno = @intCast(errno);
         return -1;
-    }
-
+    };
     return @bitCast(diriter);
 }
 
-pub export fn diriter_close(diriter: isize) isize {
+export fn diriter_close(diriter: isize) isize {
     const err = syscalls.diriter_close(@bitCast(diriter));
     if (err != 0) {
         errors.errno = @truncate(err);
@@ -45,21 +42,7 @@ pub export fn diriter_close(diriter: isize) isize {
     return 0;
 }
 
-pub export fn diriter_next(diriter: isize) ?*raw.DirEntry {
-    var entry: raw.DirEntry = undefined;
-    const err = syscalls.diriter_next(@bitCast(diriter), &entry);
-    if (err != 0) {
-        errors.errno = @truncate(err);
-        return null;
-    }
-
-    if (entry.name_length == 0 and entry.size == 0 and entry.kind == 0) {
-        return null;
-    }
-    return &entry;
-}
-
-pub export fn fstat(ri: isize) ?*raw.DirEntry {
+export fn fstat(ri: isize) ?*raw.DirEntry {
     var entry: raw.DirEntry = undefined;
     const err = syscalls.fstat(@bitCast(ri), &entry);
 
@@ -71,24 +54,25 @@ pub export fn fstat(ri: isize) ?*raw.DirEntry {
     return &entry;
 }
 
-pub export fn read(fd: isize, ptr: *u8, size: usize) isize {
-    var bytes_read: usize = undefined;
-
-    const err = syscalls.read(@bitCast(fd), ptr, size, &bytes_read);
-    if (err != 0) {
-        errors.errno = @truncate(err);
+export fn read(fd: usize, offset: isize, ptr: *u8, size: usize) isize {
+    const buffer: [*]u8 = @ptrCast(ptr);
+    const result = zread(fd, offset, buffer[0..size]) catch |err| {
+        const errno: u16 = @intFromError(err);
+        errors.errno = @intCast(errno);
         return -1;
-    }
-    return @bitCast(bytes_read);
+    };
+
+    return @bitCast(result);
 }
 
-pub export fn write(fd: isize, ptr: *const u8, size: usize) isize {
-    const err = syscalls.write(@bitCast(fd), ptr, size);
-    if (err != 0) {
-        errors.errno = @truncate(err);
+export fn write(fd: usize, offset: isize, ptr: *const u8, size: usize) isize {
+    const buffer: [*]const u8 = @ptrCast(ptr);
+    const result = zwrite(fd, offset, buffer[0..size]) catch |err| {
+        const errno: u16 = @intFromError(err);
+        errors.errno = @intCast(errno);
         return -1;
-    }
-    return 0;
+    };
+    return @bitCast(result);
 }
 
 pub export fn create(path: *const u8, len: usize) isize {
@@ -110,31 +94,57 @@ pub export fn createdir(path: *const u8, len: usize) isize {
 
     return 0;
 }
-pub fn zopen(path: []const u8) errors.Error!isize {
-    const fd = open(@ptrCast(path.ptr), path.len);
-    if (fd == -1) return errors.geterr();
+
+/// Opens a file and returns a file descriptor resource identifier
+pub fn zopen(path: []const u8) errors.Error!usize {
+    var fd: usize = undefined;
+
+    const err: u16 = @truncate(syscalls.open(@ptrCast(path.ptr), path.len, &fd));
+    if (err != 0) {
+        const errno: errors.Error = @errorCast(@errorFromInt(err));
+        return errno;
+    }
+
     return fd;
 }
 
-pub fn zclose(fd: isize) errors.Error!void {
-    const err = close(fd);
-    if (err == -1) return errors.geterr();
+pub fn zclose(fd: usize) errors.Error!void {
+    const err: u16 = @truncate(syscalls.close(@bitCast(fd)));
+    if (err != 0) {
+        const errno: errors.Error = @errorCast(@errorFromInt(err));
+        return errno;
+    }
 }
 
-pub fn zdiriter_open(dir: isize) errors.Error!isize {
-    const ri = diriter_open(dir);
-    if (ri == -1) return errors.geterr();
-    return ri;
+pub fn zdiriter_open(dir: usize) errors.Error!usize {
+    var dir_ri: usize = undefined;
+    const err: u16 = @truncate(syscalls.diriter_open(dir, &dir_ri));
+    if (err != 0) {
+        const errno: errors.Error = @errorCast(@errorFromInt(err));
+        return errno;
+    }
+
+    return dir_ri;
 }
 
-pub fn zdiriter_close(diriter: isize) errors.Error!void {
-    const err = diriter_close(diriter);
-    if (err == -1) return errors.geterr();
+pub fn zdiriter_close(diriter: usize) errors.Error!void {
+    const err: u16 = @truncate(syscalls.diriter_close(diriter));
+    if (err != 0) {
+        const errno: errors.Error = @errorCast(@errorFromInt(err));
+        return errno;
+    }
 }
 
-pub fn zdiriter_next(diriter: isize) ?raw.DirEntry {
-    const entry = diriter_next(diriter) orelse return null;
-    return entry.*;
+pub fn zdiriter_next(diriter: usize) ?raw.DirEntry {
+    var entry: raw.DirEntry = undefined;
+    const err = syscalls.diriter_next(diriter, &entry);
+    if (err != 0)
+        return null;
+
+    if (entry.name_length == 0 and entry.size == 0 and entry.kind == 0)
+        return null;
+
+    return entry;
 }
 
 pub fn zfstat(ri: isize) errors.Error!raw.DirEntry {
@@ -142,16 +152,28 @@ pub fn zfstat(ri: isize) errors.Error!raw.DirEntry {
     return stat.*;
 }
 
-pub fn zread(fd: isize, buffer: []u8) errors.Error!usize {
-    const bytes_read = read(fd, @ptrCast(buffer.ptr), buffer.len);
-    if (bytes_read == -1) return errors.geterr();
-    return @bitCast(bytes_read);
+pub fn zread(fd: usize, offset: isize, buffer: []u8) errors.Error!usize {
+    var bytes_read: usize = undefined;
+
+    const err: u16 = @truncate(syscalls.read(fd, offset, @ptrCast(buffer.ptr), buffer.len, &bytes_read));
+    if (err != 0) {
+        const errno: errors.Error = @errorCast(@errorFromInt(err));
+        return errno;
+    }
+
+    return bytes_read;
 }
 
-pub fn zwrite(fd: isize, buffer: []const u8) errors.Error!usize {
-    const bytes_wrote = write(fd, @ptrCast(buffer.ptr), buffer.len);
-    if (bytes_wrote == -1) return errors.geterr();
-    return @bitCast(bytes_wrote);
+pub fn zwrite(fd: usize, offset: isize, buffer: []const u8) errors.Error!usize {
+    var bytes_wrote: usize = undefined;
+
+    const err: u16 = @truncate(syscalls.write(fd, offset, @ptrCast(buffer.ptr), buffer.len, &bytes_wrote));
+    if (err != 0) {
+        const errno: errors.Error = @errorCast(@errorFromInt(err));
+        return errno;
+    }
+
+    return bytes_wrote;
 }
 
 pub fn zcreate(path: []const u8) errors.Error!void {
@@ -200,5 +222,13 @@ pub fn zsync(ri: usize) errors.Error!void {
     if (err != 0) {
         const err_t: errors.Error = @errorCast(@errorFromInt(err));
         return err_t;
+    }
+}
+
+pub fn ztruncate(ri: usize, len: usize) errors.Error!void {
+    const err: u16 = @intCast(syscalls.truncate(ri, len));
+    if (err != 0) {
+        const errno: errors.Error = @errorCast(@errorFromInt(err));
+        return errno;
     }
 }
