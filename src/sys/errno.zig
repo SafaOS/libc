@@ -15,6 +15,7 @@ pub const Error = error{
     InvaildPtr,
     // for operations that requires a vaild utf8 str...
     InvaildStr,
+    StrTooLong,
     InvaildPath,
     NoSuchAFileOrDirectory,
     NotAFile,
