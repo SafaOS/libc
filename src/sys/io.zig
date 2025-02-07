@@ -76,11 +76,12 @@ export fn write(fd: usize, offset: isize, ptr: *const u8, size: usize) isize {
 }
 
 pub export fn create(path: *const u8, len: usize) isize {
-    const err = syscalls.create(path, len);
-    if (err != 0) {
-        errors.errno = @truncate(err);
+    const path_buf: [*]const u8 = @ptrCast(path);
+    zcreate(path_buf[0..len]) catch |err| {
+        const errno: u16 = @intFromError(err);
+        errors.errno = @intCast(errno);
         return -1;
-    }
+    };
 
     return 0;
 }
@@ -177,8 +178,13 @@ pub fn zwrite(fd: usize, offset: isize, buffer: []const u8) errors.Error!usize {
 }
 
 pub fn zcreate(path: []const u8) errors.Error!void {
-    const err = create(@ptrCast(path.ptr), path.len);
-    if (err == -1) return errors.geterr();
+    const errc: u16 = @truncate(syscalls.create(@ptrCast(path.ptr), path.len));
+
+    if (errc != 0) {
+        const err = @errorFromInt(errc);
+        const errno: errors.Error = @errorCast(err);
+        return errno;
+    }
 }
 
 pub fn zcreatedir(path: []const u8) errors.Error!void {
@@ -217,7 +223,7 @@ pub fn zchdir(path: []const u8) errors.Error!void {
 }
 
 pub fn zsync(ri: usize) errors.Error!void {
-    const err: u16 = @intCast(syscalls.sync(ri));
+    const err: u16 = @truncate(syscalls.sync(ri));
 
     if (err != 0) {
         const err_t: errors.Error = @errorCast(@errorFromInt(err));
@@ -226,7 +232,7 @@ pub fn zsync(ri: usize) errors.Error!void {
 }
 
 pub fn ztruncate(ri: usize, len: usize) errors.Error!void {
-    const err: u16 = @intCast(syscalls.truncate(ri, len));
+    const err: u16 = @truncate(syscalls.truncate(ri, len));
     if (err != 0) {
         const errno: errors.Error = @errorCast(@errorFromInt(err));
         return errno;

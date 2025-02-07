@@ -24,7 +24,7 @@ inline fn syscall3(number: usize, arg1: usize, arg2: usize, arg3: usize) usize {
         : [number] "{rax}" (number),
           [arg1] "{rdi}" (arg1),
           [arg2] "{rsi}" (arg2),
-          [arg3] "rdx" (arg3),
+          [arg3] "{rdx}" (arg3),
         : "rcx", "r11"
     );
 }
@@ -111,8 +111,8 @@ pub inline fn diriter_next(diriter: usize, direntry: *raw.DirEntry) usize {
     return syscall3(10, diriter, @intFromPtr(direntry), 0);
 }
 
-pub inline fn wait(pid: usize) usize {
-    return syscall1(11, pid);
+pub inline fn wait(pid: usize, code: *usize) usize {
+    return syscall3(11, pid, @intFromPtr(code), 0);
 }
 
 pub inline fn fstat(ri: usize, direntry: *raw.DirEntry) usize {
@@ -139,8 +139,8 @@ pub inline fn truncate(ri: usize, len: usize) usize {
     return syscall3(17, ri, len, 0);
 }
 
-pub inline fn sbrk(amount: isize) ?*u8 {
-    return @ptrFromInt(syscall1(18, @bitCast(amount)));
+pub inline fn sbrk(amount: isize, ptr: *usize) usize {
+    return syscall3(18, @bitCast(amount), @intFromPtr(ptr), 0);
 }
 
 pub inline fn pspawn(path_ptr: *const u8, path_len: usize, config: *const raw.SpawnConfig, dest_pid: *u64) usize {

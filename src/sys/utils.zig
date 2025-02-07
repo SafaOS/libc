@@ -22,10 +22,21 @@ pub fn zpspwan(path: []const u8, argv: []const raw.Slice(u8), name: []const u8) 
     var pid: u64 = undefined;
     const err = syscalls.pspawn(@ptrCast(path.ptr), path.len, &config, &pid);
     if (err != 0) {
-        const res: u32 = @truncate(err);
-        errno.errno = res;
-        return errno.geterr();
+        const errc: u16 = @truncate(err);
+        const err_val: errno.Error = @errorCast(@errorFromInt(errc));
+        return err_val;
     }
 
     return pid;
+}
+
+pub fn wait(pid: usize) errno.Error!usize {
+    var code: usize = undefined;
+    const err: u16 = @truncate(syscalls.wait(pid, &code));
+    if (err != 0) {
+        const err_val: errno.Error = @errorCast(@errorFromInt(err));
+        return err_val;
+    }
+
+    return code;
 }

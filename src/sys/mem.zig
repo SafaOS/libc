@@ -3,11 +3,16 @@ const errors = @import("errno.zig");
 const seterr = errors.seterr;
 
 pub fn zsbrk(amount: isize) errors.Error!*anyopaque {
-    const brea = syscalls.sbrk(amount);
-    if (brea == null)
-        return error.OutOfMemory;
+    var ptr: usize = 0;
+    const errc: u16 = @truncate(syscalls.sbrk(amount, &ptr));
 
-    return @ptrCast(brea);
+    if (errc != 0) {
+        const err = @errorFromInt(errc);
+        const errno: errors.Error = @errorCast(err);
+        return errno;
+    }
+
+    return @ptrFromInt(ptr);
 }
 
 pub export fn sbrk(amount: isize) ?*anyopaque {
