@@ -51,6 +51,9 @@ pub const FILE = extern struct {
     mode: ModeFlags,
     read_offset: isize = 0,
     write_offset: isize = 0,
+    write_at: usize = 0,
+    // TODO: make this dynamic based on buffering options
+    write_buffer: [1024]u8 = undefined,
 
     pub fn open(filename: []const u8, mode: ModeFlags) errors.Error!*Self {
         const fd = io.zopen(filename) catch |err| blk: {
@@ -77,6 +80,12 @@ pub const FILE = extern struct {
 
     pub fn closeChecked(file: *FILE) errors.Error!void {
         defer stdlib.free(file);
+        file.flush() catch |err| {
+            switch (err) {
+                error.OperationNotSupported => return,
+                else => return err,
+            }
+        };
         try io.zclose(file.fd);
     }
 
@@ -84,8 +93,15 @@ pub const FILE = extern struct {
         file.closeChecked() catch unreachable;
     }
 
-    pub fn flush(file: *Self) errors.Error!void {
-        try io.zsync(@bitCast(file.fd));
+    pub fn flush(self: *Self) errors.Error!void {
+        const amount = try io.zwrite(self.fd, self.write_offset, self.write_buffer[0..self.write_at]);
+        self.write_offset += @intCast(amount);
+        self.write_at = 0;
+        try self.sync();
+    }
+
+    pub fn sync(file: *Self) errors.Error!void {
+        try io.zsync(file.fd);
     }
 
     pub fn writer(self: *FILE) FileWriter {
@@ -125,15 +141,13 @@ pub const FILE = extern struct {
 
     pub fn write(self: *Self, buf: []const u8) errors.Error!usize {
         try self.check_write();
-        const amount = io.zwrite(self.fd, self.write_offset, buf) catch |err| {
-            switch (err) {
-                error.InvaildOffset => return 0,
-                else => return err,
-            }
-        };
-        self.write_offset += @intCast(amount);
+        var write_buffer = self.write_buffer[self.write_at..];
+        const amount = @min(buf.len, write_buffer.len);
+        @memcpy(write_buffer[0..amount], buf[0..amount]);
 
-        if (buf[buf.len - 1] == '\n') try self.flush();
+        self.write_at += amount;
+        // TODO: change this when we have different buffering options
+        if (buf[buf.len - 1] == '\n' or self.write_at >= self.write_buffer.len) try self.flush();
         return amount;
     }
 
