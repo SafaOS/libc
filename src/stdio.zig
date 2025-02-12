@@ -54,6 +54,9 @@ pub const FILE = extern struct {
     write_at: usize = 0,
     // TODO: make this dynamic based on buffering options
     write_buffer: [1024]u8 = undefined,
+    read_at: usize = 0,
+    read_len: usize = 0,
+    read_buffer: [1024]u8 = undefined,
 
     pub fn open(filename: []const u8, mode: ModeFlags) errors.Error!*Self {
         const fd = io.zopen(filename) catch |err| blk: {
@@ -94,10 +97,36 @@ pub const FILE = extern struct {
     }
 
     pub fn flush(self: *Self) errors.Error!void {
-        const amount = try io.zwrite(self.fd, self.write_offset, self.write_buffer[0..self.write_at]);
+        try self.flush_write();
+        try self.flush_read();
+        try self.sync();
+    }
+
+    fn flush_write(self: *Self) errors.Error!void {
+        if (!self.mode.write) return;
+        if (self.write_at == 0) return;
+        const amount = io.zwrite(self.fd, self.write_offset, self.write_buffer[0..self.write_at]) catch |err| blk: {
+            switch (err) {
+                error.InvaildOffset, error.OperationNotSupported => break :blk 0,
+                else => return err,
+            }
+        };
         self.write_offset += @intCast(amount);
         self.write_at = 0;
-        try self.sync();
+    }
+
+    fn flush_read(self: *Self) errors.Error!void {
+        if (!self.mode.read) return;
+        if (self.read_at == self.read_buffer.len) return;
+        const amount = io.zread(self.fd, self.read_offset, self.read_buffer[self.read_at..]) catch |err| blk: {
+            switch (err) {
+                error.InvaildOffset, error.OperationNotSupported => break :blk 0,
+                else => return err,
+            }
+        };
+
+        self.read_offset += @intCast(amount);
+        self.read_len = self.read_at + amount;
     }
 
     pub fn sync(file: *Self) errors.Error!void {
@@ -120,27 +149,55 @@ pub const FILE = extern struct {
         if (!self.mode.write) return error.MissingPermissions;
     }
 
+    // an optimized version of read for reading a single byte
+    fn readBytePtr(self: *Self, ptr: *u8) errors.Error!usize {
+        if (self.read_len - self.read_at < 1) try self.flush();
+        if (self.read_len == 0) return 0;
+
+        ptr.* = self.read_buffer[self.read_at];
+        self.read_at += 1;
+        // request to restart reading if we don't have enough in the buffer
+        if (self.read_at >= self.read_buffer.len) {
+            self.read_at = 0;
+            try self.flush();
+        }
+        return 1;
+    }
+
     pub fn read(self: *Self, buf: []u8) errors.Error!usize {
         try self.check_read();
-        const amount = io.zread(self.fd, self.read_offset, buf) catch |err| {
-            switch (err) {
-                error.InvaildOffset => return 0,
-                else => return err,
-            }
-        };
-        self.read_offset += @intCast(amount);
+        if (buf.len == 0) return 0;
+        if (buf.len == 1) return self.readBytePtr(&buf[0]);
+
+        // request more data if we don't have enough in the buffer
+        if (self.read_len - self.read_at < buf.len) try self.flush();
+        const read_buffer = self.read_buffer[self.read_at..self.read_len];
+        const amount = @min(buf.len, read_buffer.len);
+        @memcpy(buf[0..amount], read_buffer[0..amount]);
+
+        self.read_at += amount;
+        // request to restart reading if we don't have enough in the buffer
+        if (self.read_at >= self.read_buffer.len) {
+            self.read_at = 0;
+            try self.flush();
+        }
         return amount;
     }
 
     pub fn readByte(self: *Self) errors.Error!u8 {
-        var buffer: [1]u8 = undefined;
-        const amount = try self.read(&buffer);
+        try self.check_read();
+        var c: u8 = undefined;
+
+        const amount = try self.readBytePtr(&c);
         if (amount == 0) return EOF;
-        return buffer[0];
+
+        return c;
     }
 
     pub fn write(self: *Self, buf: []const u8) errors.Error!usize {
         try self.check_write();
+        if (buf.len == 0) return 0;
+
         var write_buffer = self.write_buffer[self.write_at..];
         const amount = @min(buf.len, write_buffer.len);
         @memcpy(write_buffer[0..amount], buf[0..amount]);
