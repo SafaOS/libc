@@ -442,7 +442,13 @@ export fn snprintf(str: [*:0]u8, size: usize, fmt: [*:0]const u8, ...) c_int {
 }
 
 export fn printf(fmt: [*:0]const u8, ...) c_int {
-    return fprintf(stdout, fmt);
+    var args = @cVaStart();
+    var writer = stdout.writer();
+    File.writeVarFmt(writer.any(), fmt, &args) catch |err| {
+        seterr(@errorCast(err));
+        return -1;
+    };
+    return 0;
 }
 
 export fn fflush(stream: *FILE) c_int {
