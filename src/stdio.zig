@@ -20,8 +20,9 @@ pub const ModeFlags = packed struct {
     append: bool = false,
     extended: bool = false,
     access_flag: bool = false,
+    binary: bool = false,
 
-    _padding: u3 = 0,
+    _padding: u2 = 0,
     pub fn from_cstr(cstr: [*:0]const c_char) ?@This() {
         var bytes: [*:0]const u8 = @ptrCast(cstr);
         var self: ModeFlags = .{};
@@ -34,6 +35,7 @@ pub const ModeFlags = packed struct {
                 'r' => self.read = true,
                 '+' => self.extended = true,
                 'x' => self.access_flag = true,
+                'b' => self.binary = true,
                 else => return null,
             }
         }
