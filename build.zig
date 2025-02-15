@@ -8,25 +8,31 @@ pub fn build(b: *std.Build) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
-
-    const freetarget = b.resolveTargetQuery(std.Target.Query{ .abi = .none, .os_tag = .freestanding, .ofmt = .elf, .cpu_arch = .x86_64, .cpu_features_sub = std.Target.x86.featureSet(&[_]std.Target.x86.Feature{ .avx, .avx2, .sse, .sse2 }) });
+    const target = b.standardTargetOptions(.{ .default_target = .{
+        .abi = .none,
+        .os_tag = .freestanding,
+        .cpu_arch = .x86_64,
+        .cpu_features_sub = std.Target.x86.featureSet(&[_]std.Target.x86.Feature{ .avx, .avx2, .sse, .sse2, .sse3 }),
+        .cpu_features_add = std.Target.x86.featureSet(&[_]std.Target.x86.Feature{.soft_float}),
+    } });
 
     const lib = b.addStaticLibrary(.{
         .name = "libc",
         // In this case the main source file is merely a path, however, in more
         // complicated build scripts, this could be a generated file.
         .root_source_file = b.path("src/root.zig"),
-        .target = freetarget,
+        .target = target,
         .optimize = optimize,
         .link_libc = false,
     });
+    lib.bundle_compiler_rt = true;
 
     const lib_check = b.addStaticLibrary(.{
         .name = "libc",
         // In this case the main source file is merely a path, however, in more
         // complicated build scripts, this could be a generated file.
         .root_source_file = b.path("src/root.zig"),
-        .target = freetarget,
+        .target = target,
         .optimize = optimize,
     });
 

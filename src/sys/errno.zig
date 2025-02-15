@@ -49,3 +49,7 @@ pub fn geterr() Error {
 pub fn seterr(errnum: Error) void {
     errno = @intFromError(errnum);
 }
+
+export fn __errno_location() *u32 {
+    return &errno;
+}

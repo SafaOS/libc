@@ -1,4 +1,5 @@
-const builtin = @import("std").builtin;
+const std = @import("std");
+const builtin = std.builtin;
 const builtin_info = @import("builtin");
 pub const syscalls = @import("sys/syscalls.zig");
 pub const sys = @import("sys/root.zig");
@@ -148,4 +149,13 @@ comptime {
         @export(__libc_c_start, .{ .name = "__libc_c_start" });
         @export(_redirect_start, .{ .name = "_redirect_start" });
     }
+}
+
+export fn __assert_fail(expr: [*:0]const u8, file: [*:0]const u8, line: u32, function: ?[*:0]const u8) noreturn {
+    stdio.zprintf("assertion failed: {s} at {s}:{d}", .{ expr, file, line });
+    if (function != null) {
+        stdio.zprintf(" function {s}", .{function.?});
+    }
+    stdio.zprintf("\n", .{});
+    @panic("assetion failed");
 }

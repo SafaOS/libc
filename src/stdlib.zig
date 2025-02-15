@@ -168,11 +168,16 @@ pub export fn free(ptr: ?*anyopaque) void {
     anti_fragmentation();
 }
 
-pub export fn realloc(ptr: *anyopaque, size: usize) ?*anyopaque {
+pub export fn realloc(ptr: ?*anyopaque, size: usize) ?*anyopaque {
     if (size == 0) {
         free(ptr);
         return null;
     }
+
+    if (ptr == null) {
+        return malloc(size);
+    }
+
     const chunk: *Chunk = @ptrFromInt(@intFromPtr(ptr) - @sizeOf(Chunk));
 
     if (chunk.size < size) {
