@@ -115,8 +115,8 @@ pub inline fn wait(pid: usize, code: *usize) usize {
     return syscall3(11, pid, @intFromPtr(code), 0);
 }
 
-pub inline fn fstat(ri: usize, direntry: *raw.DirEntry) usize {
-    return syscall3(12, ri, @intFromPtr(direntry), 0);
+pub inline fn ctl(ri: usize, cmd: u16, args_ptr: [*]const usize, args_len: usize) usize {
+    return syscall4(12, ri, cmd, @intFromPtr(args_ptr), args_len);
 }
 
 pub inline fn spawn(elf_ptr: *const u8, elf_len: usize, config: *const raw.SpawnConfig, dest_pid: *u64) usize {
@@ -155,4 +155,8 @@ pub inline fn shutdown() noreturn {
 pub inline fn reboot() noreturn {
     _ = syscall0(21);
     unreachable;
+}
+
+pub inline fn fsize(fd: usize, dest_size: *usize) usize {
+    return syscall3(22, fd, @intFromPtr(dest_size), 0);
 }
