@@ -42,18 +42,6 @@ export fn diriter_close(diriter: isize) isize {
     return 0;
 }
 
-export fn fstat(ri: isize) ?*raw.DirEntry {
-    var entry: raw.DirEntry = undefined;
-    const err = syscalls.fstat(@bitCast(ri), &entry);
-
-    if (err != 0) {
-        errors.errno = @truncate(err);
-        return null;
-    }
-
-    return &entry;
-}
-
 export fn read(fd: usize, offset: isize, ptr: *u8, size: usize) isize {
     const buffer: [*]u8 = @ptrCast(ptr);
     const result = zread(fd, offset, buffer[0..size]) catch |err| {
@@ -148,11 +136,6 @@ pub fn zdiriter_next(diriter: usize) ?raw.DirEntry {
     return entry;
 }
 
-pub fn zfstat(ri: isize) errors.Error!raw.DirEntry {
-    const stat = fstat(ri) orelse return errors.geterr();
-    return stat.*;
-}
-
 pub fn zread(fd: usize, offset: isize, buffer: []u8) errors.Error!usize {
     var bytes_read: usize = undefined;
 
@@ -237,4 +220,30 @@ pub fn ztruncate(ri: usize, len: usize) errors.Error!void {
         const errno: errors.Error = @errorCast(@errorFromInt(err));
         return errno;
     }
+}
+
+pub fn zctl(ri: usize, cmd: u16, args: []usize) errors.Error!void {
+    const err: u16 = @truncate(syscalls.ctl(ri, cmd, args.ptr, args.len));
+    if (err != 0) {
+        const errno: errors.Error = @errorCast(@errorFromInt(err));
+        return errno;
+    }
+}
+
+/// NOTE: for now we only take 3 arguments and pass them to the syscall as a list of usizes and don't really care about varargs
+export fn ioctl(ri: usize, cmd: u16, ...) c_int {
+    var list = @cVaStart();
+    var args: [3]usize = undefined;
+    const a = @cVaArg(&list, usize);
+    const b = @cVaArg(&list, usize);
+    const c = @cVaArg(&list, usize);
+    args[0] = a;
+    args[1] = b;
+    args[2] = c;
+    @cVaEnd(&list);
+    zctl(ri, cmd, &args) catch |err| {
+        errors.seterr(err);
+        return -1;
+    };
+    return 0;
 }
