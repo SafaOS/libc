@@ -37,36 +37,17 @@ pub export fn memset(str: [*]void, c: c_int, n: usize) [*]void {
     return @ptrCast(char_str);
 }
 
-pub export fn memcpy(dest: [*]void, src: [*]const void, size: usize) [*]void {
-    const byte_dest: [*]u8 = @ptrCast(dest);
-    const byte_src: [*]const u8 = @ptrCast(src);
-    for (0..size) |i| {
-        byte_dest[i] = byte_src[i];
-    }
+pub export fn memmove(dest_raw: [*]u8, src_raw: [*]const u8, n: usize) [*]u8 {
+    const dest = dest_raw[0..n];
+    const src = src_raw[0..n];
 
-    return dest;
-}
-
-pub export fn memmove(dest: [*]void, src: [*]const void, n: usize) [*]void {
-    var size = n;
-    var byte_dest: [*]u8 = @ptrCast(dest);
-    var byte_src: [*]const u8 = @ptrCast(src);
-
-    if (@intFromPtr(byte_dest) > @intFromPtr(byte_src) and @intFromPtr(byte_src + size) > @intFromPtr(byte_dest)) {
-        byte_src += size;
-        byte_dest += size;
-
-        while (size != 0) {
-            size -= 1;
-            byte_dest[size] = byte_src[size];
-        }
+    if (@intFromPtr(dest.ptr) <= @intFromPtr(src.ptr)) {
+        std.mem.copyForwards(u8, dest, src);
     } else {
-        for (0..n) |i| {
-            byte_dest[i] = byte_src[i];
-        }
+        std.mem.copyBackwards(u8, dest, src);
     }
 
-    return dest;
+    return dest.ptr;
 }
 
 pub export fn memcmp(s1: [*]const void, s2: [*]const void, n: usize) c_int {
@@ -85,5 +66,5 @@ pub export fn memcmp(s1: [*]const void, s2: [*]const void, n: usize) c_int {
 }
 
 pub fn zmemcpy(comptime T: type, dest: []T, src: []const T) void {
-    _ = memcpy(@ptrCast(dest.ptr), @ptrCast(src.ptr), @sizeOf(T) * src.len);
+    _ = @memcpy(dest, src);
 }

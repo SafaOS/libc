@@ -1,5 +1,4 @@
 const sbrk = @import("sys/mem.zig").zsbrk;
-const memcpy = @import("string.zig").memcpy;
 const std = @import("std");
 
 pub const c_allocator = std.mem.Allocator{
@@ -178,14 +177,17 @@ pub export fn realloc(ptr: ?*anyopaque, size: usize) ?*anyopaque {
         return malloc(size);
     }
 
+    const src: [*]const u8 = @ptrCast(ptr.?);
     const chunk: *Chunk = @ptrFromInt(@intFromPtr(ptr) - @sizeOf(Chunk));
 
     if (chunk.size < size) {
         // TODO: improve this so it combines with the next block?
         anti_fragmentation();
 
-        const new = malloc(size);
-        _ = memcpy(@ptrCast(new), @ptrCast(ptr), chunk.size);
+        const new = malloc(size) orelse return null;
+        const dest: [*]u8 = @ptrCast(@alignCast(new));
+
+        @memcpy(dest, src[0..chunk.size]);
         free(ptr);
 
         return new;
