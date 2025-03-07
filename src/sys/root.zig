@@ -4,6 +4,7 @@ pub const errno = @import("errno.zig");
 pub const raw = @import("raw.zig");
 pub const mem = @import("mem.zig");
 pub const utils = @import("utils.zig");
+pub const Slice = raw.Slice;
 
 comptime {
     _ = io;
@@ -18,7 +19,7 @@ const private = @import("../private.zig");
 pub const ArgsIterator = struct {
     at: usize = 0,
     argc: usize,
-    argv: [*]const *const raw.OsStr,
+    argv: [*]const Slice(u8),
 
     pub fn next(self: *@This()) ?[]const u8 {
         defer self.at += 1;
@@ -30,9 +31,8 @@ pub const ArgsIterator = struct {
             return null;
         }
 
-        var arg = @constCast(self.argv[n]);
-        const data: [*]const u8 = @ptrCast(arg.data());
-        return data[0..arg.len];
+        const arg = self.argv[n];
+        return Slice(u8).to(arg);
     }
 
     pub fn count(self: *const @This()) usize {
