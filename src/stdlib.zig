@@ -8,14 +8,15 @@ pub const c_allocator = std.mem.Allocator{
 
 const c_allocator_vtable = std.mem.Allocator.VTable{
     .alloc = c_alloc,
-    .resize = c_realloc,
+    .resize = c_resize,
     .free = c_free,
+    .remap = c_realloc,
 };
 
 fn c_alloc(
     _: *anyopaque,
     len: usize,
-    _: u8,
+    _: std.mem.Alignment,
     _: usize,
 ) ?[*]u8 {
     const results = zalloc(u8, len) catch return null;
@@ -25,16 +26,16 @@ fn c_alloc(
 fn c_free(
     _: *anyopaque,
     ptr: []u8,
-    _: u8,
+    _: std.mem.Alignment,
     _: usize,
 ) void {
     free(@ptrCast(ptr.ptr));
 }
 
-fn c_realloc(
+fn c_resize(
     _: *anyopaque,
     ptr: []u8,
-    _: u8,
+    _: std.mem.Alignment,
     new_len: usize,
     _: usize,
 ) bool {
@@ -46,6 +47,17 @@ fn c_realloc(
     }
 
     return true;
+}
+
+fn c_realloc(
+    _: *anyopaque,
+    ptr: []u8,
+    _: std.mem.Alignment,
+    new_len: usize,
+    _: usize,
+) ?[*]u8 {
+    const new_ptr = zrealloc(u8, ptr, new_len) orelse return null;
+    return new_ptr.ptr;
 }
 
 const INIT_SIZE = 4096;

@@ -1,5 +1,6 @@
 const errors = @import("sys/errno.zig");
 const Error = errors.Error;
+const SysError = errors.SysError;
 const std = @import("std");
 
 pub export fn strlen(cstr: [*:0]const c_char) usize {
@@ -9,17 +10,19 @@ pub export fn strlen(cstr: [*:0]const c_char) usize {
     return i;
 }
 pub export fn strerror(errnum: u32) [*:0]const c_char {
-    if (errnum >= @intFromError(Error.Last)) {
-        return @ptrCast("UNKNOWN");
-    }
+    const no_error: [*:0]const c_char = @ptrCast("NO ERROR");
+    const unknown: [*:0]const c_char = @ptrCast("UNKNOWN");
 
     if (errnum == 0) {
-        return @ptrCast("NO ERROR");
+        return no_error;
     }
 
+    if (errnum >= std.math.maxInt(u16)) {
+        return unknown;
+    }
     const errnum_short: u16 = @truncate(errnum);
-    const err: Error = @errorCast(@errorFromInt(errnum_short));
-    return @ptrCast(@errorName(err));
+    const syserror = SysError.from_u16(errnum_short) orelse return unknown;
+    return @ptrCast(@tagName(syserror));
 }
 
 pub export fn strerrorlen_s(errnum: u32) usize {

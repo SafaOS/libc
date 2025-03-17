@@ -33,7 +33,6 @@ pub export fn exit(code: usize) noreturn {
 }
 
 pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace, return_addr: ?usize) noreturn {
-    @setCold(true);
     const at = return_addr orelse @returnAddress();
 
     stdio.zprintf("\x1B[38;2;200;0;0mlibc panic: {s} at 0x{x} <??>\n", .{ msg, at });
@@ -68,8 +67,8 @@ fn zmain() callconv(.C) i32 {
 comptime {
     if (@hasDecl(root, "main") and builtin_info.os.tag == .freestanding) {
         const info = @typeInfo(@TypeOf(root.main));
-        if (info.Fn.calling_convention == .Unspecified)
-            @export(zmain, .{ .name = "main" });
+        if (info.@"fn".calling_convention == .auto)
+            @export(&zmain, .{ .name = "main" });
     }
 }
 /// starts as C
@@ -144,10 +143,10 @@ fn _start() callconv(.Naked) noreturn {
 // we cannot export start directly to avoid problems with headergen
 comptime {
     if (builtin_info.os.tag == .freestanding) {
-        @export(_start, .{ .name = "_start" });
+        @export(&_start, .{ .name = "_start" });
 
-        @export(__libc_c_start, .{ .name = "__libc_c_start" });
-        @export(_redirect_start, .{ .name = "_redirect_start" });
+        @export(&__libc_c_start, .{ .name = "__libc_c_start" });
+        @export(&_redirect_start, .{ .name = "_redirect_start" });
     }
 }
 

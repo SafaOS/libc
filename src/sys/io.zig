@@ -33,11 +33,10 @@ export fn diriter_open(dir: usize) isize {
 }
 
 export fn diriter_close(diriter: isize) isize {
-    const err = syscalls.diriter_close(@bitCast(diriter));
-    if (err != 0) {
-        errors.errno = @truncate(err);
+    zdiriter_close(@bitCast(diriter)) catch |err| {
+        errors.seterr(err);
         return -1;
-    }
+    };
 
     return 0;
 }
@@ -74,12 +73,12 @@ pub export fn create(path: *const u8, len: usize) isize {
     return 0;
 }
 
-pub export fn createdir(path: *const u8, len: usize) isize {
-    const err = syscalls.createdir(path, len);
-    if (err != 0) {
-        errors.errno = @truncate(err);
+pub export fn createdir(path_ptr: [*]const u8, len: usize) isize {
+    const path = path_ptr[0..len];
+    zcreatedir(path) catch |err| {
+        errors.seterr(err);
         return -1;
-    }
+    };
 
     return 0;
 }
@@ -87,49 +86,27 @@ pub export fn createdir(path: *const u8, len: usize) isize {
 /// Opens a file and returns a file descriptor resource identifier
 pub fn zopen(path: []const u8) errors.Error!usize {
     var fd: usize = undefined;
-
-    const err: u16 = @truncate(syscalls.open(@ptrCast(path.ptr), path.len, &fd));
-    if (err != 0) {
-        const errno: errors.Error = @errorCast(@errorFromInt(err));
-        return errno;
-    }
-
+    try syscalls.open(@ptrCast(path.ptr), path.len, &fd).into_err();
     return fd;
 }
 
 pub fn zclose(fd: usize) errors.Error!void {
-    const err: u16 = @truncate(syscalls.close(@bitCast(fd)));
-    if (err != 0) {
-        const errno: errors.Error = @errorCast(@errorFromInt(err));
-        return errno;
-    }
+    try syscalls.close(@bitCast(fd)).into_err();
 }
 
 pub fn zdiriter_open(dir: usize) errors.Error!usize {
     var dir_ri: usize = undefined;
-    const err: u16 = @truncate(syscalls.diriter_open(dir, &dir_ri));
-    if (err != 0) {
-        const errno: errors.Error = @errorCast(@errorFromInt(err));
-        return errno;
-    }
-
+    try syscalls.diriter_open(dir, &dir_ri).into_err();
     return dir_ri;
 }
 
 pub fn zdiriter_close(diriter: usize) errors.Error!void {
-    const err: u16 = @truncate(syscalls.diriter_close(diriter));
-    if (err != 0) {
-        const errno: errors.Error = @errorCast(@errorFromInt(err));
-        return errno;
-    }
+    try syscalls.diriter_close(diriter).into_err();
 }
 
 pub fn zdiriter_next(diriter: usize) ?raw.DirEntry {
     var entry: raw.DirEntry = undefined;
-    const err = syscalls.diriter_next(diriter, &entry);
-    if (err != 0)
-        return null;
-
+    syscalls.diriter_next(diriter, &entry).into_err() catch return null;
     if (entry.name_length == 0 and entry.size == 0 and entry.kind == 0)
         return null;
 
@@ -139,98 +116,67 @@ pub fn zdiriter_next(diriter: usize) ?raw.DirEntry {
 pub fn zread(fd: usize, offset: isize, buffer: []u8) errors.Error!usize {
     var bytes_read: usize = undefined;
 
-    const err: u16 = @truncate(syscalls.read(fd, offset, @ptrCast(buffer.ptr), buffer.len, &bytes_read));
-    if (err != 0) {
-        const errno: errors.Error = @errorCast(@errorFromInt(err));
-        return errno;
-    }
-
+    try syscalls.read(fd, offset, @ptrCast(buffer.ptr), buffer.len, &bytes_read).into_err();
     return bytes_read;
 }
 
 pub fn zwrite(fd: usize, offset: isize, buffer: []const u8) errors.Error!usize {
     var bytes_wrote: usize = undefined;
 
-    const err: u16 = @truncate(syscalls.write(fd, offset, @ptrCast(buffer.ptr), buffer.len, &bytes_wrote));
-    if (err != 0) {
-        const errno: errors.Error = @errorCast(@errorFromInt(err));
-        return errno;
-    }
-
+    try syscalls.write(fd, offset, @ptrCast(buffer.ptr), buffer.len, &bytes_wrote).into_err();
     return bytes_wrote;
 }
 
 pub fn zcreate(path: []const u8) errors.Error!void {
-    const errc: u16 = @truncate(syscalls.create(@ptrCast(path.ptr), path.len));
-
-    if (errc != 0) {
-        const err = @errorFromInt(errc);
-        const errno: errors.Error = @errorCast(err);
-        return errno;
-    }
+    try syscalls.create(@ptrCast(path.ptr), path.len).into_err();
 }
 
 pub fn zcreatedir(path: []const u8) errors.Error!void {
-    const err = createdir(@ptrCast(path.ptr), path.len);
-    if (err == -1) return errors.geterr();
+    try syscalls.createdir(path.ptr, path.len).into_err();
 }
 
-pub export fn chdir(path: [*]const u8, path_len: usize) isize {
-    const err = syscalls.chdir(path, path_len);
-    if (err != 0) {
-        errors.errno = @truncate(err);
+pub export fn chdir(path_ptr: [*]const u8, path_len: usize) isize {
+    const path = path_ptr[0..path_len];
+    zchdir(path) catch |err| {
+        errors.seterr(err);
         return -1;
-    }
+    };
     return 0;
 }
 
-pub export fn getcwd(ptr: [*]const u8, len: usize) isize {
-    var dest_len: usize = undefined;
-    const err = syscalls.getcwd(ptr, len, &dest_len);
-    if (err != 0) {
-        errors.errno = @truncate(err);
+pub export fn getcwd(ptr: [*]u8, len: usize) isize {
+    const buffer = ptr[0..len];
+    const glen = zgetcwd(buffer) catch |err| {
+        errors.seterr(err);
         return -1;
-    }
-    return @bitCast(dest_len);
+    };
+    return @bitCast(glen);
 }
 
 pub fn zgetcwd(buffer: []u8) errors.Error!usize {
-    const len = getcwd(@ptrCast(buffer.ptr), buffer.len);
-    if (len == -1) return errors.geterr();
-    return @bitCast(len);
+    var dest_len: usize = undefined;
+    try syscalls.getcwd(buffer.ptr, buffer.len, &dest_len).into_err();
+    return dest_len;
 }
 
 pub fn zchdir(path: []const u8) errors.Error!void {
-    const err = chdir(@ptrCast(path.ptr), path.len);
-    if (err == -1) return errors.geterr();
+    try syscalls.chdir(path.ptr, path.len).into_err();
 }
 
 pub fn zsync(ri: usize) errors.Error!void {
-    const err: u16 = @truncate(syscalls.sync(ri));
-
-    if (err != 0) {
-        const err_t: errors.Error = @errorCast(@errorFromInt(err));
-        return err_t;
-    }
+    try syscalls.sync(ri).into_err();
 }
 
 pub fn ztruncate(ri: usize, len: usize) errors.Error!void {
-    const err: u16 = @truncate(syscalls.truncate(ri, len));
-    if (err != 0) {
-        const errno: errors.Error = @errorCast(@errorFromInt(err));
-        return errno;
-    }
+    try syscalls.truncate(ri, len).into_err();
 }
 
 pub fn zctl(ri: usize, cmd: u16, args: []usize) errors.Error!void {
-    const err: u16 = @truncate(syscalls.ctl(ri, cmd, args.ptr, args.len));
-    if (err != 0) {
-        const errno: errors.Error = @errorCast(@errorFromInt(err));
-        return errno;
-    }
+    try syscalls.ctl(ri, cmd, args.ptr, args.len).into_err();
 }
 
 /// NOTE: for now we only take 3 arguments and pass them to the syscall as a list of usizes and don't really care about varargs
+/// FIXME: I realized that ioctl isn't actually varargs it is defined that way for simplicity...
 export fn ioctl(ri: usize, cmd: u16, ...) c_int {
     var list = @cVaStart();
     var args: [3]usize = undefined;
