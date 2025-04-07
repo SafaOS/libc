@@ -1,15 +1,15 @@
 const std = @import("std");
 const builtin = std.builtin;
 const builtin_info = @import("builtin");
-pub const syscalls = @import("sys/syscalls.zig");
 pub const sys = @import("sys/root.zig");
+pub const syscalls = sys.api.syscalls;
+
 pub const ctype = @import("ctype.zig");
 pub const string = @import("string.zig");
 pub const stdio = @import("stdio.zig");
 pub const stdlib = @import("stdlib.zig");
 pub const extra = @import("extra.zig");
 pub const dirent = @import("dirent.zig");
-pub const private = @import("private.zig");
 
 comptime {
     // TODO: figure out a method to not export unused stuff
@@ -22,14 +22,10 @@ comptime {
         _ = extra;
         _ = dirent;
     }
-    _ = private;
 }
 
 pub export fn exit(code: usize) noreturn {
     syscalls.exit(code);
-    while (true) {
-        asm volatile ("hlt");
-    }
 }
 
 pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace, return_addr: ?usize) noreturn {

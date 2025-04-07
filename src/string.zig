@@ -1,4 +1,5 @@
-const errors = @import("sys/errno.zig");
+const sys = @import("sys/root.zig");
+const errors = sys.abi.errors;
 const Error = errors.Error;
 const SysError = errors.SysError;
 const std = @import("std");

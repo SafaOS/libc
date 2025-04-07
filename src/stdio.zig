@@ -1,10 +1,16 @@
-const io = @import("sys/io.zig");
+const sys = @import("sys/root.zig");
+const api = sys.api;
+const abi = sys.abi;
+
+const syscalls = api.syscalls;
+const alloc = api.alloc;
+
+const errors = abi.errors;
+
 const string = @import("string.zig");
 const extra = @import("extra.zig");
 const panic = @import("root.zig").panic;
 const stdlib = @import("stdlib.zig");
-const syscalls = @import("sys/syscalls.zig");
-const errors = @import("sys/errno.zig");
 const geterr = errors.geterr;
 const seterr = errors.seterr;
 const std = @import("std");
@@ -60,9 +66,11 @@ pub const SeekWhence = enum(usize) {
     End = 2,
 };
 
+const FileResource = syscalls.io.FileResource;
+
 pub const FILE = extern struct {
     const Self = @This();
-    fd: usize,
+    fd: FileResource,
     mode: ModeFlags,
     seek_at: isize = 0,
     write_at: usize = 0,
@@ -73,11 +81,11 @@ pub const FILE = extern struct {
     read_buffer: [1024]u8 = undefined,
 
     pub fn open(filename: []const u8, mode: ModeFlags) errors.Error!*Self {
-        const fd = io.zopen(filename) catch |err| blk: {
+        const fd = FileResource.open(filename) catch |err| blk: {
             switch (err) {
                 error.NoSuchAFileOrDirectory => if (mode.write or mode.append) {
-                    try io.zcreate(filename);
-                    break :blk try io.zopen(filename);
+                    try syscalls.io.create(filename);
+                    break :blk try FileResource.open(filename);
                 } else return err,
                 else => return err,
             }
@@ -87,27 +95,23 @@ pub const FILE = extern struct {
             if (mode.access_flag) {
                 return error.AlreadyExists;
             }
-            io.ztruncate(@bitCast(fd), 0) catch {};
+            fd.truncate(0) catch {};
         }
 
-        const file = allocator.create(FILE) catch unreachable;
+        const file = alloc.create(FILE) catch unreachable;
         file.* = .{ .fd = fd, .mode = mode };
         return file;
     }
 
-    pub fn closeChecked(file: *FILE) errors.Error!void {
-        defer stdlib.free(file);
+    pub fn close(file: *Self) errors.Error!void {
+        defer alloc.destroy(file);
         file.flush() catch |err| {
             switch (err) {
                 error.OperationNotSupported => return,
                 else => return err,
             }
         };
-        try io.zclose(file.fd);
-    }
-
-    pub fn close(file: *Self) void {
-        file.closeChecked() catch unreachable;
+        file.fd.close();
     }
 
     pub fn flush(self: *Self) errors.Error!void {
@@ -119,7 +123,7 @@ pub const FILE = extern struct {
     fn flush_write(self: *Self) errors.Error!void {
         if (!self.mode.write) return;
         if (self.write_at == 0) return;
-        const amount = io.zwrite(self.fd, self.seek_at, self.write_buffer[0..self.write_at]) catch |err| blk: {
+        const amount = self.fd.write(self.seek_at, self.write_buffer[0..self.write_at]) catch |err| blk: {
             switch (err) {
                 error.InvaildOffset, error.OperationNotSupported => break :blk 0,
                 else => return err,
@@ -132,7 +136,7 @@ pub const FILE = extern struct {
     fn flush_read(self: *Self) errors.Error!void {
         if (!self.mode.read) return;
         if (self.read_at == self.read_buffer.len) return;
-        const amount = io.zread(self.fd, self.seek_at, self.read_buffer[self.read_at..]) catch |err| blk: {
+        const amount = self.fd.read(self.seek_at, self.read_buffer[self.read_at..]) catch |err| blk: {
             switch (err) {
                 error.InvaildOffset, error.OperationNotSupported => break :blk 0,
                 else => return err,
@@ -143,8 +147,8 @@ pub const FILE = extern struct {
         self.read_len = self.read_at + amount;
     }
 
-    pub fn sync(file: *Self) errors.Error!void {
-        try io.zsync(file.fd);
+    pub fn sync(self: *Self) errors.Error!void {
+        return self.fd.sync();
     }
 
     pub fn writer(self: *FILE) FileWriter {
@@ -324,14 +328,28 @@ pub const FILE = extern struct {
 };
 
 pub const File = FILE;
-pub var stdin_desc: FILE = .{ .fd = 0, .mode = .{ .read = true } };
-pub export var stdin: *FILE = &stdin_desc;
 
-pub var stdout_desc: FILE = .{ .fd = 1, .mode = .{ .write = true } };
-pub export var stdout: *FILE = &stdout_desc;
+pub var stdin_desc: ?FILE = null;
+pub var stdout_desc: ?FILE = null;
+pub var stderr_desc: ?FILE = null;
 
-pub var stderr_desc: FILE = .{ .fd = 2, .mode = .{ .write = true } };
-pub export var stderr: *FILE = &stderr_desc;
+pub fn stdin() *FILE {
+    if (stdin_desc) |_| return &stdin_desc.?;
+    stdin_desc = .{ .fd = syscalls.io.stdin(), .mode = .{ .read = true } };
+    return &stdin_desc.?;
+}
+
+pub fn stdout() *FILE {
+    if (stdout_desc) |_| return &stdout_desc.?;
+    stdout_desc = .{ .fd = syscalls.io.stdout(), .mode = .{ .write = true } };
+    return &stdout_desc.?;
+}
+
+pub fn stderr() *FILE {
+    if (stderr_desc) |_| return &stderr_desc.?;
+    stderr_desc = .{ .fd = syscalls.io.stderr(), .mode = .{ .write = true } };
+    return &stderr_desc.?;
+}
 
 export fn fopen(filename: [*:0]const c_char, mode: [*:0]const c_char) ?*FILE {
     const path: [*:0]const u8 = @ptrCast(filename);
@@ -348,7 +366,7 @@ export fn fopen(filename: [*:0]const c_char, mode: [*:0]const c_char) ?*FILE {
 }
 
 export fn fclose(file: *FILE) c_int {
-    FILE.closeChecked(file) catch |err| {
+    file.close() catch |err| {
         seterr(err);
         return -1;
     };
@@ -389,7 +407,7 @@ export fn getc(stream: *FILE) c_int {
 }
 
 export fn getchar() c_int {
-    return fgetc(stdin);
+    return fgetc(stdin());
 }
 
 fn zfgetline(file: *FILE) errors.Error![]u8 {
@@ -414,11 +432,11 @@ export fn fgetline(file: *FILE, len: *usize) ?[*]c_char {
 }
 
 fn wc(c: u8) isize {
-    return io.write(1, &c, 1);
+    return stdout.writeByte(c);
 }
 
 pub fn zprintf(comptime fmt: []const u8, args: anytype) void {
-    const writer = stdout.writer();
+    const writer = stdout().writer();
     writer.print(fmt, args) catch {};
 }
 
@@ -445,7 +463,7 @@ export fn snprintf(str: [*:0]u8, size: usize, fmt: [*:0]const u8, ...) c_int {
 
 export fn printf(fmt: [*:0]const u8, ...) c_int {
     var args = @cVaStart();
-    var writer = stdout.writer();
+    var writer = stdout().writer();
     File.writeVarFmt(writer.any(), fmt, &args) catch |err| {
         seterr(@errorCast(err));
         return -1;
@@ -487,8 +505,7 @@ export fn ftell(stream: *FILE) usize {
     if (stream.seek_at >= 0) {
         return @bitCast(stream.seek_at);
     } else {
-        var size: usize = undefined;
-        _ = syscalls.fsize(stream.fd, &size);
+        const size = stream.fd.size() catch unreachable;
         const pos_from_end: usize = @bitCast(-stream.seek_at - 1);
         return size - pos_from_end;
     }

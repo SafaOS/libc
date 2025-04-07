@@ -1,42 +1,41 @@
-const io = @import("sys/io.zig");
+const sys = @import("sys/root.zig");
+const syscalls = sys.api.syscalls;
+
 const string = @import("string.zig");
 const stdio = @import("stdio.zig");
 const stdlib = @import("stdlib.zig");
-const errors = @import("sys/errno.zig");
+const errors = sys.abi.errors;
 const seterr = errors.seterr;
 
-pub const raw = @import("sys/raw.zig");
+const alloc = sys.api.alloc;
+const raw = sys.abi.ffi;
+const DirIterResource = syscalls.io.DirIterResource;
+const FileResource = syscalls.io.FileResource;
+
 pub const DIR = extern struct {
     current_index: usize = 0,
-    ri: usize,
-    dir_ri: usize,
+    resource: DirIterResource,
 
     pub fn open(path: []const u8) errors.Error!*DIR {
-        const dir_ri = try io.zopen(path);
+        const file = try FileResource.open(path);
+        const diriter = try file.dirIter();
 
-        const ri = try io.zdiriter_open(dir_ri);
-
-        const dir = stdlib.zmalloc(DIR).?;
-        dir.ri = ri;
-        dir.dir_ri = dir_ri;
-
+        const dir = try alloc.create(DIR);
+        dir.* = .{ .resource = diriter };
         return dir;
     }
 
-    pub fn next(dir: *DIR) ?raw.DirEntry {
-        defer dir.current_index += 1;
-        return io.zdiriter_next(dir.ri);
+    pub fn next(self: *DIR) ?raw.DirEntry {
+        defer self.current_index += 1;
+        return self.resource.next();
     }
 
-    fn dirclose(dir: *DIR) errors.Error!void {
-        try io.zdiriter_close(dir.ri);
-        try io.zclose(dir.dir_ri);
-
-        stdlib.free(dir);
+    pub fn tryClose(self: *DIR) errors.Error!void {
+        try self.resource.try_close();
     }
-
-    pub fn close(dir: *DIR) void {
-        dirclose(dir) catch unreachable;
+    pub fn close(self: *DIR) void {
+        defer alloc.destroy(self);
+        self.resource.close();
     }
 };
 
@@ -61,7 +60,7 @@ pub export fn telldir(dir: *DIR) c_int {
 }
 
 pub export fn closedir(dir: *DIR) c_int {
-    dir.dirclose() catch |err| {
+    dir.tryClose() catch |err| {
         seterr(err);
         return -1;
     };
