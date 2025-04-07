@@ -7,7 +7,9 @@ pub fn build(b: *std.Build) void {
     // Standard optimization options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
     // set a preferred release mode, allowing the user to decide how to optimize.
-    const optimize = b.standardOptimizeOption(.{});
+    const optimize = b.standardOptimizeOption(.{
+        .preferred_optimize_mode = .ReleaseSmall,
+    });
     const target = b.standardTargetOptions(.{ .default_target = .{
         .abi = .none,
         .os_tag = .freestanding,
@@ -25,6 +27,14 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = false,
     });
+
+    lib.addLibraryPath(b.path("link_with/"));
+    lib.linkSystemLibrary2("safa_api", .{
+        .needed = true,
+        .preferred_link_mode = .static,
+        .weak = true,
+    });
+    lib.addObjectFile(b.path("link_with/crt0.o"));
     lib.bundle_compiler_rt = true;
 
     const lib_check = b.addStaticLibrary(.{
