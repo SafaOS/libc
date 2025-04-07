@@ -59,3 +59,20 @@ export fn __assert_fail(expr: [*:0]const u8, file: [*:0]const u8, line: u32, fun
     stdio.zprintf("\n", .{});
     @panic("assetion failed");
 }
+
+const RawSlice = sys.abi.ffi.RawSlice;
+extern fn main(argc: i32, argv: [*]const [*:0]const u8) i32;
+extern fn _c_start_inner(argc: usize, argv: [*]const RawSlice(u8), main: *const fn (i32, [*]const [*:0]const u8) callconv(.C) i32) noreturn;
+
+export fn _start_inner(argc: usize, argv: [*]const RawSlice(u8)) noreturn {
+    return _c_start_inner(argc, argv, main);
+}
+
+export fn _start() callconv(.naked) noreturn {
+    asm volatile (
+        \\ xor %rbp, %rbp
+        \\ push %rbp
+        \\ push %rbp
+        \\ call _start_inner
+    );
+}

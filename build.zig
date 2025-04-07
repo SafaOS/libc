@@ -28,13 +28,6 @@ pub fn build(b: *std.Build) void {
         .link_libc = false,
     });
 
-    lib.addLibraryPath(b.path("link_with/"));
-    lib.linkSystemLibrary2("safa_api", .{
-        .needed = true,
-        .preferred_link_mode = .static,
-        .weak = true,
-    });
-    lib.addObjectFile(b.path("link_with/crt0.o"));
     lib.bundle_compiler_rt = true;
 
     const lib_check = b.addStaticLibrary(.{

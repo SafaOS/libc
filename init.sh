@@ -5,5 +5,5 @@ git submodule update --depth 1
 cd api
 ./build.sh
 cd ..
-rm -rf link_with
-cp -r api/out link_with
+mkdir -p out
+cp -r api/out/* out
