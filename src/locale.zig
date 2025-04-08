@@ -25,10 +25,12 @@ pub const lconv = extern struct {
     int_n_sign_posn: u8,
 };
 
+// STUB
 pub export fn localeconv() *lconv {
     @panic("localeconv: unimplemented");
 }
 
+// STUB
 pub export fn setlocale(category: c_int, locale: [*:0]const c_char) ?[*:0]const u8 {
     _ = category;
     _ = locale;
