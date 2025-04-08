@@ -12,7 +12,7 @@ you can build the libc with
 ./build.sh
 ```
 
-you will then find the libc (`libsalib,a`) and the api (`libsafa_api.a`) libraries in the `out` directory,
+you will then find the libc (`libsalibc.a`) and the api (`libsafa_api.a`) libraries in the `out` directory,
 you need to link with them both because the libc depends on the api.
 
 ## Philosophy
