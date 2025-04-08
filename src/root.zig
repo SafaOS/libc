@@ -4,7 +4,6 @@ const builtin_info = @import("builtin");
 pub const sys = @import("sys/root.zig");
 pub const syscalls = sys.api.syscalls;
 
-pub const ctype = @import("ctype.zig");
 pub const string = @import("string.zig");
 pub const stdio = @import("stdio.zig");
 pub const stdlib = @import("stdlib.zig");
@@ -12,10 +11,8 @@ pub const extra = @import("extra.zig");
 pub const dirent = @import("dirent.zig");
 
 comptime {
-    // TODO: figure out a method to not export unused stuff
     if (builtin_info.output_mode == .Lib) {
         _ = sys;
-        _ = ctype;
         _ = string;
         _ = stdio;
         _ = stdlib;
@@ -24,8 +21,8 @@ comptime {
     }
 }
 
-pub export fn exit(code: usize) noreturn {
-    syscalls.exit(code);
+pub export fn exit(code: c_int) noreturn {
+    syscalls.exit(@as(u32, @bitCast(code)));
 }
 
 pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace, return_addr: ?usize) noreturn {
