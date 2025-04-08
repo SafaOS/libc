@@ -83,3 +83,11 @@ export fn realloc(ptr: ?*anyopaque, size: usize) ?*anyopaque {
         return @ptrCast(bytes.ptr);
     } else return malloc(size);
 }
+
+export fn calloc(num: usize, size: usize) ?*anyopaque {
+    if (size == 0) return null;
+
+    const bytes_amount = num * size;
+    const bytes = alloc.alloc_zeroed(u8, bytes_amount) catch return null;
+    return @ptrCast(bytes.ptr);
+}

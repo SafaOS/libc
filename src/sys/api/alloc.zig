@@ -23,6 +23,12 @@ pub fn alloc(comptime T: type, len: usize) AllocError![]T {
     return slice_ptr[0..len];
 }
 
+pub fn alloc_zeroed(comptime T: type, len: usize) AllocError![]T {
+    const results = try alloc(T, len);
+    @memset(results, 0);
+    return results;
+}
+
 pub fn realloc(comptime T: type, slice: []T, new_len: usize) AllocError![]T {
     defer free(T, slice);
 
