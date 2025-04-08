@@ -333,20 +333,21 @@ pub var stdin_desc: ?FILE = null;
 pub var stdout_desc: ?FILE = null;
 pub var stderr_desc: ?FILE = null;
 
-pub fn stdin() *FILE {
-    if (stdin_desc) |_| return &stdin_desc.?;
+pub export var stdin: *FILE = undefined;
+pub export var stdout: *FILE = undefined;
+pub export var stderr: *FILE = undefined;
+
+pub fn init_stdin() *FILE {
     stdin_desc = .{ .fd = syscalls.io.stdin(), .mode = .{ .read = true } };
     return &stdin_desc.?;
 }
 
-pub fn stdout() *FILE {
-    if (stdout_desc) |_| return &stdout_desc.?;
+pub fn init_stdout() *FILE {
     stdout_desc = .{ .fd = syscalls.io.stdout(), .mode = .{ .write = true } };
     return &stdout_desc.?;
 }
 
-pub fn stderr() *FILE {
-    if (stderr_desc) |_| return &stderr_desc.?;
+pub fn init_stderr() *FILE {
     stderr_desc = .{ .fd = syscalls.io.stderr(), .mode = .{ .write = true } };
     return &stderr_desc.?;
 }
@@ -407,7 +408,7 @@ export fn getc(stream: *FILE) c_int {
 }
 
 export fn getchar() c_int {
-    return fgetc(stdin());
+    return fgetc(stdin);
 }
 
 fn zfgetline(file: *FILE) errors.Error![]u8 {
@@ -431,12 +432,8 @@ export fn fgetline(file: *FILE, len: *usize) ?[*]c_char {
     return @ptrCast(slice.ptr);
 }
 
-fn wc(c: u8) isize {
-    return stdout.writeByte(c);
-}
-
 pub fn zprintf(comptime fmt: []const u8, args: anytype) void {
-    const writer = stdout().writer();
+    const writer = stdout.writer();
     writer.print(fmt, args) catch {};
 }
 
@@ -463,7 +460,7 @@ export fn snprintf(str: [*:0]u8, size: usize, fmt: [*:0]const u8, ...) c_int {
 
 export fn printf(fmt: [*:0]const u8, ...) c_int {
     var args = @cVaStart();
-    var writer = stdout().writer();
+    var writer = stdout.writer();
     File.writeVarFmt(writer.any(), fmt, &args) catch |err| {
         seterr(@errorCast(err));
         return -1;

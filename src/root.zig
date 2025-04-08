@@ -61,10 +61,18 @@ export fn __assert_fail(expr: [*:0]const u8, file: [*:0]const u8, line: u32, fun
 }
 
 const RawSlice = sys.abi.ffi.RawSlice;
+
+fn init() void {
+    stdio.stdout = stdio.init_stdout();
+    stdio.stdin = stdio.init_stdin();
+    stdio.stderr = stdio.init_stderr();
+}
+
 extern fn main(argc: i32, argv: [*]const [*:0]const u8) i32;
 extern fn _c_start_inner(argc: usize, argv: [*]const RawSlice(u8), main: *const fn (i32, [*]const [*:0]const u8) callconv(.C) i32) noreturn;
 
 export fn _start_inner(argc: usize, argv: [*]const RawSlice(u8)) noreturn {
+    init();
     return _c_start_inner(argc, argv, main);
 }
 
