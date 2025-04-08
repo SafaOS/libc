@@ -484,7 +484,7 @@ export fn fputc(c: u8, stream: *FILE) c_int {
     return 0;
 }
 
-export fn fseek(stream: *FILE, offset: isize, whence: u8) c_int {
+export fn fseek(stream: *FILE, offset: isize, whence: c_int) c_int {
     if (whence > @intFromEnum(SeekWhence.End)) {
         seterr(error.Generic);
         return -1;
