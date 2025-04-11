@@ -9,6 +9,7 @@ pub const stdio = @import("stdio.zig");
 pub const stdlib = @import("stdlib.zig");
 pub const extra = @import("extra.zig");
 pub const dirent = @import("dirent.zig");
+pub const math = @import("math.zig");
 
 comptime {
     if (builtin_info.output_mode == .Lib) {
@@ -18,6 +19,7 @@ comptime {
         _ = stdlib;
         _ = extra;
         _ = dirent;
+        _ = math;
     }
 }
 
