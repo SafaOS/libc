@@ -20,6 +20,19 @@ const EOF: u8 = 255;
 
 const VaList = @import("std").builtin.VaList;
 
+/// TODO: remove is a stub
+export fn remove(path: [*:0]const c_char) c_int {
+    _ = path;
+    std.debug.panic("remove(path: [*:0]const c_char) is not yet implemented", .{});
+}
+
+/// TODO: rename is a stub
+export fn rename(oldpath: [*:0]const c_char, newpath: [*:0]const c_char) c_int {
+    _ = oldpath;
+    _ = newpath;
+    std.debug.panic("rename(oldpath: [*:0]const c_char, newpath: [*:0]const c_char) is not yet implemented", .{});
+}
+
 pub const ModeFlags = packed struct {
     read: bool = false,
     write: bool = false,
@@ -79,6 +92,7 @@ pub const FILE = extern struct {
     read_at: usize = 0,
     read_len: usize = 0,
     read_buffer: [1024]u8 = undefined,
+    eof: bool = false,
 
     pub fn open(filename: []const u8, mode: ModeFlags) errors.Error!*Self {
         const fd = FileResource.open(filename) catch |err| blk: {
@@ -145,6 +159,7 @@ pub const FILE = extern struct {
 
         self.seek_at += @intCast(amount);
         self.read_len = self.read_at + amount;
+        self.eof = amount == 0;
     }
 
     pub fn sync(self: *Self) errors.Error!void {
@@ -366,6 +381,21 @@ export fn fopen(filename: [*:0]const c_char, mode: [*:0]const c_char) ?*FILE {
     };
 }
 
+export fn feof(stream: *FILE) c_int {
+    return @intFromBool(stream.eof);
+}
+
+/// TODO: clearerr is a stub
+export fn clearerr(stream: *FILE) void {
+    _ = stream;
+}
+
+/// TODO: ferror is a stub
+export fn ferror(stream: *FILE) c_int {
+    _ = stream;
+    return 0;
+}
+
 export fn fclose(file: *FILE) c_int {
     file.close() catch |err| {
         seterr(err);
@@ -447,15 +477,64 @@ export fn fprintf(stream: *FILE, fmt: [*:0]const u8, ...) c_int {
     return 0;
 }
 
-export fn snprintf(str: [*:0]u8, size: usize, fmt: [*:0]const u8, ...) c_int {
-    var args = @cVaStart();
-    var stream = std.io.fixedBufferStream(str[0..size]);
+inline fn pesudo_print(fmt: [*:0]const u8, args: *VaList) !usize {
+    const PesudoStream = struct {
+        pub const Error = error{};
+
+        pub fn write(self: *@This(), bytes: []const u8) !usize {
+            _ = self;
+            return bytes.len;
+        }
+    };
+
+    const pesudo_stream = PesudoStream{};
+
+    var stream = std.io.countingWriter(pesudo_stream);
+    const writer = stream.writer();
+    try FILE.writeVarFmt(writer.any(), fmt, args);
+
+    return @bitCast(stream.bytes_written);
+}
+
+/// Writes the formatted string to the buffer in a C-style format.
+/// Returns the number of bytes written to the buffer.
+///
+/// buffer can be null, in which case the number of bytes that would have been written is returned.
+inline fn zsnprintf(buffer: ?[]u8, fmt: [*:0]const u8, args: *VaList) !usize {
+    if (buffer == null)
+        return pesudo_print(fmt, args);
+
+    var stream = std.io.fixedBufferStream(buffer.?);
     var writer = stream.writer();
-    File.writeVarFmt(writer.any(), fmt, &args) catch |err| {
+    try File.writeVarFmt(writer.any(), fmt, args);
+
+    return stream.pos;
+}
+
+export fn snprintf(str: ?[*:0]u8, size: usize, fmt: [*:0]const u8, ...) c_int {
+    var args = @cVaStart();
+
+    const buffer = if (str) |buf| buf[0 .. size - 1] else null;
+
+    const len = zsnprintf(buffer, fmt, &args) catch |err| {
         seterr(@errorCast(err));
         return -1;
     };
-    return 0;
+
+    if (str) |buf| buf[len] = 0;
+    return @intCast(len);
+}
+
+export fn sprintf(str: [*]u8, fmt: [*:0]const u8, ...) c_int {
+    var args = @cVaStart();
+
+    const len = zsnprintf(str[0..std.math.maxInt(usize)], fmt, &args) catch |err| {
+        seterr(@errorCast(err));
+        return -1;
+    };
+
+    str[len] = 0;
+    return @intCast(len);
 }
 
 export fn printf(fmt: [*:0]const u8, ...) c_int {
@@ -482,6 +561,24 @@ export fn fputc(c: u8, stream: *FILE) c_int {
         return -1;
     };
     return 0;
+}
+
+export fn fputs(str: [*:0]const u8, stream: *FILE) c_int {
+    _ = FILE.write(stream, str[0..std.mem.len(str)]) catch |err| {
+        seterr(err);
+        return -1;
+    };
+    return 0;
+}
+
+export fn fgets(str: [*]u8, size: usize, stream: *FILE) ?[*]u8 {
+    const amount = FILE.read(stream, str[0 .. size - 1]) catch |err| {
+        seterr(err);
+        return null;
+    };
+
+    str[amount] = 0;
+    return str;
 }
 
 export fn fseek(stream: *FILE, offset: isize, whence: c_int) c_int {

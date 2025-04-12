@@ -5,10 +5,7 @@ const SysError = errors.SysError;
 const std = @import("std");
 
 pub export fn strlen(cstr: [*:0]const c_char) usize {
-    var i: usize = 0;
-    while (cstr[i] != 0)
-        i += 1;
-    return i;
+    return std.mem.len(cstr);
 }
 
 pub export fn strnlen(cstr: [*:0]const c_char, maxlen: usize) usize {
