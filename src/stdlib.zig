@@ -1,5 +1,6 @@
 const std = @import("std");
 const sys = @import("sys/root.zig");
+const libc = @import("root.zig");
 const alloc = sys.api.alloc;
 
 pub const c_allocator = std.mem.Allocator{
@@ -90,4 +91,8 @@ export fn calloc(num: usize, size: usize) ?*anyopaque {
     const bytes_amount = num * size;
     const bytes = alloc.alloc_zeroed(u8, bytes_amount) catch return null;
     return @ptrCast(bytes.ptr);
+}
+
+export fn abort() noreturn {
+    libc.exit(1);
 }
