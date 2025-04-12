@@ -23,6 +23,20 @@ comptime {
     }
 }
 
+// TODO: system is a stub
+// TODO: kernel version 0.2.1 should have environment variables soon
+pub export fn system(command: [*:0]const u8) c_int {
+    _ = command;
+    std.debug.panic("system() is not yet implemented", .{});
+}
+
+/// TODO: signal is a stub
+pub export fn signal(sig: i32, func: *const anyopaque) *anyopaque {
+    _ = sig;
+    _ = func;
+    std.debug.panic("signal() is not yet implemented", .{});
+}
+
 pub export fn exit(code: c_int) noreturn {
     syscalls.exit(@as(u32, @bitCast(code)));
 }
