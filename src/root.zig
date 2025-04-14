@@ -82,11 +82,11 @@ fn init() void {
 }
 
 extern fn main(argc: i32, argv: [*]const [*:0]const u8) i32;
-extern fn _c_start_inner(argc: usize, argv: [*]const RawSlice(u8), main: *const fn (i32, [*]const [*:0]const u8) callconv(.C) i32) noreturn;
+extern fn _c_api_init(args: RawSlice(RawSlice(u8)), env: RawSlice(RawSlice(u8)), main: *const fn (i32, [*]const [*:0]const u8) callconv(.C) i32) noreturn;
 
-export fn _start_inner(argc: usize, argv: [*]const RawSlice(u8)) noreturn {
+export fn _start_inner(argc: usize, argv: [*]RawSlice(u8), envc: usize, env: [*]RawSlice(u8)) noreturn {
     init();
-    return _c_start_inner(argc, argv, main);
+    _c_api_init(.{ .len = argc, .ptr = argv }, .{ .len = envc, .ptr = env }, main);
 }
 
 export fn _start() callconv(.naked) noreturn {

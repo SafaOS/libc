@@ -1,7 +1,10 @@
 const std = @import("std");
 const sys = @import("sys/root.zig");
 const libc = @import("root.zig");
-const alloc = sys.api.alloc;
+
+const api = sys.api;
+const env = api.env;
+const alloc = api.alloc;
 
 pub const c_allocator = std.mem.Allocator{
     .ptr = undefined,
@@ -95,4 +98,34 @@ export fn calloc(num: usize, size: usize) ?*anyopaque {
 
 export fn abort() noreturn {
     libc.exit(1);
+}
+
+export fn getenv(name: [*c]const u8) [*c]const u8 {
+    if (name == null) return null;
+
+    const result = env.get(std.mem.span(name)) orelse return null;
+    const ptr: [*c]const u8 = @ptrCast(result.ptr);
+
+    return ptr;
+}
+
+export fn setenv(name: [*c]const u8, value: [*c]const u8, overwrite: i32) c_int {
+    if (name == null or value == null) return -1;
+
+    const name_str = std.mem.span(name);
+    const value_str = std.mem.span(value);
+
+    if (overwrite != 0)
+        if (env.contains(name_str)) return 0;
+
+    env.set(name_str, value_str);
+    return 0;
+}
+
+export fn unsetenv(name: [*c]const u8) c_int {
+    if (name == null) return -1;
+    const name_str = std.mem.span(name);
+    env.remove(name_str);
+
+    return 0;
 }

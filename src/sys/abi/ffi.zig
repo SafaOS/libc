@@ -42,6 +42,22 @@ pub fn RawSlice(comptime T: type) type {
     };
 }
 
+pub fn RawSliceConst(comptime T: type) type {
+    return extern struct {
+        const Self = @This();
+        ptr: [*]const T,
+        len: usize,
+
+        pub fn from(slice: []const T) Self {
+            return Self{ .ptr = slice.ptr, .len = slice.len };
+        }
+
+        pub fn into(self: Self) []const T {
+            return self.ptr[0..self.len];
+        }
+    };
+}
+
 pub const SpawnFlags = packed struct {
     const Self = @This();
     clone_resources: bool = false,
