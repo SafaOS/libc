@@ -145,3 +145,16 @@ export fn unsetenv(name: [*c]const u8) c_int {
 
     return 0;
 }
+
+export fn strtod(ptr: [*c]const u8, endptr: [*c][*c]u8) f64 {
+    const str = std.mem.span(ptr);
+    const str_trimmed = std.mem.trim(u8, str, &.{ ' ', '\t', '\n' });
+    const result = std.fmt.parseFloat(f64, str_trimmed) catch return 0.0;
+
+    if (endptr != null) {
+        const end: [*c]u8 = @constCast(ptr + str_trimmed.len);
+        endptr.* = @ptrCast(end);
+    }
+
+    return result;
+}

@@ -192,3 +192,8 @@ pub export fn memcmp(s1: [*]const u8, s2: [*]const u8, n: usize) c_int {
 pub fn zmemcpy(comptime T: type, dest: []T, src: []const T) void {
     _ = @memcpy(dest, src);
 }
+
+pub export fn strpbrk(dest: [*c]const u8, accept: [*c]const u8) [*c]u8 {
+    const result = std.mem.indexOfAny(u8, std.mem.span(dest), std.mem.span(accept)) orelse return null;
+    return @constCast(dest + result);
+}

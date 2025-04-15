@@ -27,3 +27,5 @@ char* strchr(const char* str, int ch);
 char* strstr(const char* str, const char* substr);
 
 char *strerror(int errnum);
+double strtod(const char *str, char **str_end);
+char *strpbrk(const char *s, const char *accept);

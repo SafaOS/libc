@@ -2,6 +2,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#define EOF -1
+#define BUFSIZ 4096
+
 typedef intptr_t ssize_t;
 
 typedef struct FILE FILE;
@@ -15,6 +18,8 @@ ssize_t snprintf(char* buf, size_t cap, const char* fmt, ...) __attribute__((for
 ssize_t sprintf(char* buf, const char* fmt, ...) __attribute__((format(printf,2, 3)));
 
 FILE* fopen(const char *path, const char *mode);
+FILE *freopen(const char *path, const char *mode, FILE *stream);
+
 int fclose(FILE *f);
 
 size_t fwrite(const void *buffer, size_t size, size_t count, FILE *f);
@@ -23,6 +28,7 @@ size_t fread(void *buffer, size_t size, size_t count, FILE *f);
 ssize_t ftell(FILE *f);
 
 int fgetc(FILE *f);
+#define getc(f) fgetc(f)
 char *fgets(char *buf, size_t size, FILE *f);
 int fputc(int c, FILE *f);
 

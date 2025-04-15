@@ -381,6 +381,12 @@ export fn fopen(filename: [*:0]const c_char, mode: [*:0]const c_char) ?*FILE {
     };
 }
 
+// TODO: partial stub
+export fn freopen(filename: [*:0]const c_char, mode: [*:0]const c_char, file: *FILE) ?*FILE {
+    _ = fclose(file);
+    return fopen(filename, mode);
+}
+
 export fn feof(stream: *FILE) c_int {
     return @intFromBool(stream.eof);
 }
