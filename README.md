@@ -2,7 +2,7 @@
 SafaOS's libc written in zig
 
 ## Building
-first you need to run the initilization script to compile the `safa-api` library.
+first you need to run the initialization script to compile the `safa-api` library.
 ```
 ./init.sh
 ```

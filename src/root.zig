@@ -10,6 +10,7 @@ pub const stdlib = @import("stdlib.zig");
 pub const extra = @import("extra.zig");
 pub const dirent = @import("dirent.zig");
 pub const math = @import("math.zig");
+const exit = syscalls.exit;
 
 comptime {
     if (builtin_info.output_mode == .Lib) {
@@ -23,22 +24,11 @@ comptime {
     }
 }
 
-// TODO: system is a stub
-// TODO: kernel version 0.2.1 should have environment variables soon
-pub export fn system(command: [*:0]const u8) c_int {
-    _ = command;
-    std.debug.panic("system() is not yet implemented", .{});
-}
-
 /// TODO: signal is a stub
 pub export fn signal(sig: i32, func: *const anyopaque) *anyopaque {
     _ = sig;
     _ = func;
     std.debug.panic("signal() is not yet implemented", .{});
-}
-
-pub export fn exit(code: c_int) noreturn {
-    syscalls.exit(@as(u32, @bitCast(code)));
 }
 
 pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace, return_addr: ?usize) noreturn {

@@ -3,8 +3,28 @@ const sys = @import("sys/root.zig");
 const libc = @import("root.zig");
 
 const api = sys.api;
+const syscalls = api.syscalls;
 const env = api.env;
 const alloc = api.alloc;
+
+export fn abs(x: i32) u32 {
+    return @abs(x);
+}
+
+// TODO: system is a stub
+// TODO: kernel version 0.2.1 should have environment variables soon
+export fn system(command: [*:0]const u8) c_int {
+    _ = command;
+    std.debug.panic("system() is not yet implemented", .{});
+}
+
+export fn exit(code: c_int) noreturn {
+    syscalls.exit(@as(u32, @bitCast(code)));
+}
+
+export fn abort() noreturn {
+    syscalls.exit(1);
+}
 
 pub const c_allocator = std.mem.Allocator{
     .ptr = undefined,
@@ -94,10 +114,6 @@ export fn calloc(num: usize, size: usize) ?*anyopaque {
     const bytes_amount = num * size;
     const bytes = alloc.alloc_zeroed(u8, bytes_amount) catch return null;
     return @ptrCast(bytes.ptr);
-}
-
-export fn abort() noreturn {
-    libc.exit(1);
 }
 
 export fn getenv(name: [*c]const u8) [*c]const u8 {

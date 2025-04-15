@@ -12,10 +12,6 @@ export fn ldexp(x: f64, ex: i32) f64 {
     return std.math.ldexp(x, ex);
 }
 
-export fn abs(x: i32) u32 {
-    return @abs(x);
-}
-
 export fn floor(x: f64) f64 {
     return @floor(x);
 }
