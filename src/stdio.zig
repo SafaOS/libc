@@ -443,6 +443,13 @@ export fn getc(stream: *FILE) c_int {
     return fgetc(stream);
 }
 
+// TODO: implement ungetc when different file buffering options are avaliable
+export fn ungetc(c: c_int, stream: *FILE) c_int {
+    _ = c;
+    _ = stream;
+    std.debug.panic("ungetc: is not yet implemented", .{});
+}
+
 export fn getchar() c_int {
     return fgetc(stdin);
 }

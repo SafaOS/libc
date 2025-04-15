@@ -29,6 +29,7 @@ ssize_t ftell(FILE *f);
 
 int fgetc(FILE *f);
 #define getc(f) fgetc(f)
+int ungetc(int c, FILE *f);
 char *fgets(char *buf, size_t size, FILE *f);
 int fputc(int c, FILE *f);
 
