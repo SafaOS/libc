@@ -10,6 +10,9 @@ pub const stdlib = @import("stdlib.zig");
 pub const extra = @import("extra.zig");
 pub const dirent = @import("dirent.zig");
 pub const math = @import("math.zig");
+pub const locale = @import("locale.zig");
+pub const time = @import("time.zig");
+
 const exit = syscalls.exit;
 
 comptime {
@@ -21,6 +24,8 @@ comptime {
         _ = extra;
         _ = dirent;
         _ = math;
+        _ = time;
+        _ = locale;
     }
 }
 
