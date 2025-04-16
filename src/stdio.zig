@@ -183,6 +183,17 @@ export fn fopen(filename: [*:0]const c_char, mode: [*:0]const c_char) ?*FILE {
     };
 }
 
+// TODO: tmpfile is a stub
+// because file deleting is not yet a thing
+export fn tmpfile() *FILE {
+    std.debug.panic("tmpfile(): not yet implemented", .{});
+}
+
+export fn tmpnam(s: [*c]u8) [*c]u8 {
+    _ = s;
+    std.debug.panic("tmpnam: is not yet implemented", .{});
+}
+
 // TODO: add Custom buffering
 export fn setvbuf(file: *FILE, custom_buffer: [*c]u8, mode: BufferingOption, size: usize) c_int {
     std.debug.assert(custom_buffer == null);

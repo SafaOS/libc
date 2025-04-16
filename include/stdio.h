@@ -63,3 +63,8 @@ int feof(FILE *f);
 #define _IOLBF 2
 
 int setvbuf(FILE *stream, char *buffer, int mode, size_t size);
+
+FILE* tmpfile();
+char* tmpnam(char *s);
+
+#define L_tmpnam 128

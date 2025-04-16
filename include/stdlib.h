@@ -14,3 +14,7 @@ void free(void* addr);
 
 #define EXIT_SUCCESS 0
 #define EXIT_FAILURE 1
+
+const char* getenv(const char *name);
+int setenv(const char *name, const char *value, int overwrite);
+int unsetenv(const char *name);
