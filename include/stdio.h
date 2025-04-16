@@ -34,7 +34,8 @@ char *fgets(char *buf, size_t size, FILE *f);
 int fputc(int c, FILE *f);
 
 int fputs(const char *str, FILE* stream);
-static int puts(const char *str) {
+
+static inline int puts(const char *str) {
     return fputs(str, stdout);
 }
 
@@ -56,3 +57,9 @@ int ferror(FILE *f);
 int feof(FILE *f);
 
 #define FILENAME_MAX 1024
+
+#define _IONBF 0
+#define _IOFBF 1
+#define _IOLBF 2
+
+int setvbuf(FILE *stream, char *buffer, int mode, size_t size);

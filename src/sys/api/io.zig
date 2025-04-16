@@ -207,7 +207,7 @@ pub const BufferedFile = struct {
     }
 };
 
-pub const BufferingOption = enum(u2) {
+pub const BufferingOption = enum(u8) {
     None = 0,
     Buffered = 1,
     LineBuffered = 2,
@@ -269,13 +269,13 @@ pub const GenericFile = struct {
         this_ptr.* = this;
         return this_ptr;
     }
-    pub fn set_buffering(self: *Self, buffering: BufferingOption) void {
+    pub fn set_buffering(self: *Self, buffering: BufferingOption) !void {
         try self.flush();
 
         self.buffering = switch (buffering) {
             .None => .{ .None = InstantFile.init(self.file) },
-            .Buffered => .{ .Buffered = BufferedFile.init(self) },
-            .LineBuffered => .{ .LineBuffered = BufferedLineFile.init(self) },
+            .Buffered => .{ .Buffered = BufferedFile.init(self.file) },
+            .LineBuffered => .{ .LineBuffered = BufferedLineFile.init(self.file) },
         };
     }
 

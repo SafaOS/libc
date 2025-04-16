@@ -183,6 +183,18 @@ export fn fopen(filename: [*:0]const c_char, mode: [*:0]const c_char) ?*FILE {
     };
 }
 
+// TODO: add Custom buffering
+export fn setvbuf(file: *FILE, custom_buffer: [*c]u8, mode: BufferingOption, size: usize) c_int {
+    std.debug.assert(custom_buffer == null);
+    std.debug.assert(size == 4096 or size == 0);
+
+    file.set_buffering(mode) catch |err| {
+        seterr(err);
+        return -1;
+    };
+    return 0;
+}
+
 // TODO: partial stub
 export fn freopen(filename: [*:0]const c_char, mode: [*:0]const c_char, file: *FILE) ?*FILE {
     _ = fclose(file);
