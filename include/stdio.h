@@ -35,9 +35,7 @@ int fputc(int c, FILE *f);
 
 int fputs(const char *str, FILE* stream);
 
-static inline int puts(const char *str) {
-    return fputs(str, stdout);
-}
+#define puts(str) fputs(str "\n", stdout)
 
 int fflush(FILE* f);
 

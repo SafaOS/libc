@@ -11,6 +11,7 @@ pub const extra = @import("extra.zig");
 pub const dirent = @import("dirent.zig");
 pub const math = @import("math.zig");
 pub const locale = @import("locale.zig");
+pub const setjmp = @import("setjmp.zig");
 pub const time = @import("time.zig");
 
 const exit = syscalls.exit;
@@ -26,6 +27,7 @@ comptime {
         _ = math;
         _ = time;
         _ = locale;
+        _ = setjmp;
     }
 }
 

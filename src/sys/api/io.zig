@@ -134,20 +134,24 @@ pub const GenericFileWriter = std.io.GenericWriter(*File, errors.Error, File.wri
 pub const InstantFile = struct {
     reader_inner: GenericFileReader,
     writer_inner: GenericFileWriter,
+    file: *File,
     const Self = @This();
 
     pub fn init(file: *File) InstantFile {
         return .{
             .reader_inner = .{ .context = file },
             .writer_inner = .{ .context = file },
+            .file = file,
         };
     }
 
     pub fn write(self: *Self, buffer: []const u8) errors.Error!usize {
+        defer self.file.sync() catch {};
         return self.writer_inner.write(buffer);
     }
 
     pub fn read(self: *Self, buffer: []u8) errors.Error!usize {
+        defer self.file.sync() catch {};
         return self.reader_inner.read(buffer);
     }
 };
