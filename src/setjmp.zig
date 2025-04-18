@@ -9,8 +9,9 @@ const jmp_buf_t = packed struct {
     rip: usize,
 };
 
-export fn setjmp(buf: *jmp_buf_t) callconv(.naked) void {
+export fn setjmp(buf: *jmp_buf_t) callconv(.naked) c_int {
     _ = buf;
+
     asm volatile (
         \\ movq %rbx, 0x0(%rdi)
         \\ movq %rbp, 0x8(%rdi)
@@ -18,11 +19,11 @@ export fn setjmp(buf: *jmp_buf_t) callconv(.naked) void {
         \\ movq %r13, 0x18(%rdi)
         \\ movq %r14, 0x20(%rdi)
         \\ movq %r15, 0x28(%rdi)
-        \\ lea 0x8(%rsp), %rax
+        \\ leaq 0x8(%rsp), %rax
         \\ movq %rax, 0x30(%rdi)
         \\ movq (%rsp), %rax
-        \\ mov %rax, 0x38(%rdi)
-        \\ xor %rax, %rax
+        \\ movq %rax, 0x38(%rdi)
+        \\ xorq %rax, %rax
         \\ ret
     );
 }
@@ -32,7 +33,8 @@ export fn longjmp(buf: *jmp_buf_t, val: c_int) callconv(.naked) noreturn {
     _ = val;
     asm volatile (
     // set val to 1 if it is 0 and move it to the return register
-        \\ movl $1, %eax
+        \\ xor %rax, %rax
+        \\ movq $1, %rax
         \\ testl %esi, %esi
         \\ cmovnzl %esi, %eax
         // restore
@@ -43,7 +45,7 @@ export fn longjmp(buf: *jmp_buf_t, val: c_int) callconv(.naked) noreturn {
         \\ movq 0x20(%rdi), %r14
         \\ movq 0x28(%rdi), %r15
         \\ movq 0x30(%rdi), %rsp
-        \\ movq 0x38(%rdi), %rcx
-        \\ jmp *%rcx
+        \\ movq 0x38(%rdi), %rsi
+        \\ jmp *%rsi
     );
 }

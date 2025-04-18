@@ -86,6 +86,7 @@ fn c_realloc(
 }
 
 export fn malloc(size: usize) ?*anyopaque {
+    if (size == 0) return null;
     const bytes = alloc.alloc(u8, size) catch return null;
     return @ptrCast(bytes.ptr);
 }
@@ -98,6 +99,11 @@ export fn free(ptr: ?*anyopaque) void {
 
 export fn realloc(ptr: ?*anyopaque, size: usize) ?*anyopaque {
     if (ptr) |p| {
+        if (size == 0) {
+            alloc.destroy(p);
+            return null;
+        }
+
         const bytes = alloc.alloc(u8, size) catch return null;
 
         defer alloc.destroy(p);
