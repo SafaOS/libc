@@ -43,18 +43,28 @@ pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace, return_a
     stdio.zprintf("\x1B[38;2;200;0;0mlibc panic: {s} at 0x{x} <??>\n", .{ msg, at });
     stdio.zprintf("trace:\n", .{});
 
+    var rbp_skip: usize = 0;
+
     if (error_return_trace) |trace| {
         const addresses = trace.instruction_addresses;
 
         for (addresses) |address| {
             stdio.zprintf("  <0x{x}>\n", .{address});
         }
-    } else {
-        var rbp: ?[*]usize = @ptrFromInt(@frameAddress());
-        while (rbp != null) : (rbp = @ptrFromInt(rbp.?[0])) {
-            stdio.zprintf("  0x{x} <??>\n", .{rbp.?[1]});
-        }
+
+        rbp_skip = trace.instruction_addresses.len;
     }
+    var rbp: ?[*]usize = @ptrFromInt(@frameAddress());
+
+    for (0..rbp_skip) |_| {
+        if (rbp == null) break;
+        rbp = @ptrFromInt(rbp.?[0]);
+    }
+
+    while (rbp != null) : (rbp = @ptrFromInt(rbp.?[0])) {
+        stdio.zprintf("  0x{x} <??>\n", .{rbp.?[1]});
+    }
+
     stdio.zprintf("\x1B[0m", .{});
 
     exit(1);
