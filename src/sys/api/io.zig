@@ -158,6 +158,7 @@ pub const InstantFile = struct {
 
 /// a File that is buffered until newline is encountered
 pub const BufferedLineFile = struct {
+    file: *File,
     reader_inner: std.io.BufferedReader(4096, GenericFileReader),
     writer_inner: std.io.FindByteWriter(std.io.BufferedWriter(4096, GenericFileWriter)),
 
@@ -165,6 +166,7 @@ pub const BufferedLineFile = struct {
 
     pub fn init(file: *File) BufferedLineFile {
         return .{
+            .file = file,
             .reader_inner = std.io.bufferedReader(GenericFileReader{ .context = file }),
             .writer_inner = std.io.findByteWriter('\n', std.io.bufferedWriter(GenericFileWriter{ .context = file })),
         };
@@ -181,6 +183,7 @@ pub const BufferedLineFile = struct {
     }
 
     pub fn flush(self: *Self) errors.Error!void {
+        defer self.file.sync() catch {};
         try self.writer_inner.underlying_writer.flush();
     }
 };
@@ -189,10 +192,12 @@ pub const BufferedLineFile = struct {
 pub const BufferedFile = struct {
     reader_inner: std.io.BufferedReader(4096, GenericFileReader),
     writer_inner: std.io.BufferedWriter(4096, GenericFileWriter),
+    file: *File,
     const Self = @This();
 
     pub fn init(file: *File) BufferedFile {
         return .{
+            .file = file,
             .reader_inner = std.io.bufferedReader(GenericFileReader{ .context = file }),
             .writer_inner = std.io.bufferedWriter(GenericFileWriter{ .context = file }),
         };
@@ -207,6 +212,7 @@ pub const BufferedFile = struct {
     }
 
     pub fn flush(self: *Self) errors.Error!void {
+        defer self.file.sync() catch {};
         try self.writer_inner.flush();
     }
 };
@@ -311,8 +317,6 @@ pub const GenericFile = struct {
             .None => {},
             inline else => |*buffered| try buffered.flush(),
         }
-
-        try self.file.sync();
     }
 
     pub fn closeChecked(self: *Self) errors.Error!void {
