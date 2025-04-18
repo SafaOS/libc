@@ -32,10 +32,9 @@ comptime {
 }
 
 /// TODO: signal is a stub
-pub export fn signal(sig: i32, func: *const anyopaque) *anyopaque {
-    _ = sig;
-    _ = func;
-    std.debug.panic("signal() is not yet implemented", .{});
+pub export fn signal(sig: i32, func: *const anyopaque) ?*anyopaque {
+    stdio.zerrprintf("\x1b[34m<called a stub: signal({}, {})>\x1b[0m\n", .{ sig, func });
+    return null;
 }
 
 pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace, return_addr: ?usize) noreturn {

@@ -300,6 +300,11 @@ export fn fgetline(file: *FILE, len: *usize) ?[*]c_char {
     return @ptrCast(slice.ptr);
 }
 
+pub fn zerrprintf(comptime fmt: []const u8, args: anytype) void {
+    const writer = stderr.writer();
+    writer.print(fmt, args) catch {};
+}
+
 pub fn zprintf(comptime fmt: []const u8, args: anytype) void {
     const writer = stdout.writer();
     writer.print(fmt, args) catch {};
