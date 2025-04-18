@@ -77,71 +77,114 @@ fn traverseFmt(self: std.io.AnyWriter, fmt: [*:0]const u8) !?[*:0]const u8 {
 pub fn writeVarFmt(self: std.io.AnyWriter, fmt: [*:0]const u8, args: *VaList) !void {
     var current = fmt;
 
-    while (current[0] != 0) : (current += 1) {
+    while (current[0] != 0) {
         current = try traverseFmt(self, current) orelse return;
         current += 1;
-        switch (current[0]) {
-            'd' => {
-                const i = @cVaArg(args, i32);
-                try self.print("{}", .{i});
-            },
 
-            'u' => {
-                const i = @cVaArg(args, u32);
-                try self.print("{}", .{i});
-            },
+        const Fmt = packed struct {
+            const Kind = enum(u3) {
+                none,
+                dec,
+                long,
+                size_t,
+                // null terminated string literal
+                string,
+                // string pointer and length
+                sized_string,
+            };
 
-            'z' => {
-                if (current[1] == 'u') {
-                    current += 1;
-                    const i = @cVaArg(args, usize);
-                    try self.print("{}", .{i});
-                } else {
-                    const i = @cVaArg(args, isize);
-                    try self.print("{}", .{i});
-                }
-            },
+            const Flags = packed struct(u3) {
+                unsigned: bool = false,
+                hex: bool = false,
+                big_hex: bool = false,
+            };
+            kind: Kind = .none,
+            flags: Flags = .{},
 
-            'l' => {
-                if (current[1] == 'u') {
-                    current += 1;
-                    const i = @cVaArg(args, u64);
-                    try self.print("{}", .{i});
-                } else {
-                    const i = @cVaArg(args, i64);
-                    try self.print("{}", .{i});
-                }
-            },
+            // Sets the kind of self to `kind` returns whether or not to stop paring the fmt
+            fn setKind(this: *@This(), kind: Kind) bool {
+                return if (this.kind == .none) blk: {
+                    this.kind = kind;
+                    break :blk false;
+                } else true;
+            }
 
-            'p', 'x' => {
-                const i = @cVaArg(args, usize);
-                try self.print("{x}", .{i});
-            },
+            fn print_int(this: @This(), parent: @TypeOf(self), comptime T: type, comptime unsigned_T: type, value: T) !void {
+                if (this.flags.hex)
+                    return if (this.flags.unsigned) parent.print("{x}", .{@as(unsigned_T, @bitCast(value))}) else parent.print("{x}", .{value});
+                if (this.flags.big_hex)
+                    return if (this.flags.unsigned) parent.print("{X}", .{@as(unsigned_T, @bitCast(value))}) else parent.print("{X}", .{value});
 
-            's' => {
-                const str = @cVaArg(args, [*:0]const u8);
-                try self.print("{s}", .{str});
-            },
+                return if (this.flags.unsigned) parent.print("{}", .{@as(unsigned_T, @bitCast(value))}) else parent.print("{}", .{value});
+            }
 
-            '.' => {
-                current += 1;
-                switch (current[0]) {
-                    '*' => {
+            fn print_int_va(this: @This(), parent: @TypeOf(self), args_list: @TypeOf(args), comptime T: type, unsigned_T: type) !void {
+                const value = @cVaArg(args_list, T);
+                return this.print_int(parent, T, unsigned_T, value);
+            }
+        };
+
+        var spec: Fmt = .{};
+
+        while (current[0] != 0) {
+            const should_stop = switch (current[0]) {
+                'd' => spec.setKind(.dec),
+                'z' => spec.setKind(.size_t),
+                'u' => blk: {
+                    _ = spec.setKind(.dec);
+                    spec.flags.unsigned = true;
+                    break :blk false;
+                },
+                'l' => spec.setKind(.long),
+                'p' => blk: {
+                    if (spec.setKind(.size_t)) break :blk true;
+                    spec.flags.unsigned = true;
+                    spec.flags.hex = true;
+                    break :blk false;
+                },
+                'x' => blk: {
+                    _ = spec.setKind(.dec);
+                    spec.flags.hex = true;
+                    break :blk false;
+                },
+                'X' => blk: {
+                    _ = spec.setKind(.dec);
+                    spec.flags.big_hex = true;
+                    break :blk false;
+                },
+                's' => spec.setKind(.string),
+                '.' => switch (current[0]) {
+                    '*' => blk: {
                         current += 1;
-                        const length = @cVaArg(args, usize);
-                        switch (current[0]) {
-                            's' => {
-                                const str = @cVaArg(args, [*]const u8);
-                                try self.print("{s}", .{str[0..length]});
-                            },
-                            else => {},
-                        }
+                        break :blk switch (current[0]) {
+                            's' => spec.setKind(.sized_string),
+                            else => true,
+                        };
                     },
-                    else => {},
-                }
-            },
+                    else => true,
+                },
 
-            else => continue,
+                else => true,
+            };
+            if (should_stop) break else current += 1;
+        }
+
+        switch (spec.kind) {
+            .string => {
+                const arg = @cVaArg(args, [*:0]const u8);
+                try self.print("{s}", .{arg});
+            },
+            .sized_string => {
+                const len = @cVaArg(args, usize);
+                const str = @cVaArg(args, [*c]const u8);
+                try self.print("{s}", .{str[0..len]});
+            },
+            .dec => try spec.print_int_va(self, args, c_int, c_uint),
+            .long => try spec.print_int_va(self, args, c_long, c_ulong),
+            .size_t => try spec.print_int_va(self, args, isize, usize),
+            .none => {
+                continue;
+            },
         }
     }
 }
