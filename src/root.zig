@@ -2,6 +2,8 @@ const std = @import("std");
 const builtin = std.builtin;
 const builtin_info = @import("builtin");
 pub const sys = @import("sys/root.zig");
+const abi = sys.abi;
+
 pub const syscalls = sys.api.syscalls;
 
 pub const string = @import("string.zig");
@@ -88,11 +90,11 @@ fn init() void {
 }
 
 extern fn main(argc: i32, argv: [*]const [*:0]const u8) i32;
-extern fn _c_api_init(args: RawSlice(RawSlice(u8)), env: RawSlice(RawSlice(u8)), main: *const fn (i32, [*]const [*:0]const u8) callconv(.C) i32) noreturn;
+extern fn _c_api_init(args: RawSlice(RawSlice(u8)), env: RawSlice(RawSlice(u8)), task_abi_structures: *const abi.process.AbiStructures, main: *const fn (i32, [*]const [*:0]const u8) callconv(.C) i32) noreturn;
 
-export fn _start_inner(argc: usize, argv: [*]RawSlice(u8), envc: usize, env: [*]RawSlice(u8)) noreturn {
+export fn _start_inner(argc: usize, argv: [*]RawSlice(u8), envc: usize, env: [*]RawSlice(u8), task_abi_structures: *const abi.process.AbiStructures) noreturn {
     init();
-    _c_api_init(.{ .len = argc, .ptr = argv }, .{ .len = envc, .ptr = env }, main);
+    _c_api_init(.{ .len = argc, .ptr = argv }, .{ .len = envc, .ptr = env }, task_abi_structures, main);
 }
 
 export fn _start() callconv(.naked) noreturn {
