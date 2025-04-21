@@ -12,14 +12,6 @@ export fn ldexp(x: f64, ex: i32) f64 {
     return std.math.ldexp(x, ex);
 }
 
-export fn floor(x: f64) f64 {
-    return @floor(x);
-}
-
-export fn fmod(x: f64, y: f64) f64 {
-    return @mod(x, y);
-}
-
 export fn frexp(x: f64, ex: *i32) f64 {
     const results = std.math.frexp(x);
     ex.* = results.exponent;
@@ -30,44 +22,8 @@ export fn pow(x: f64, y: f64) f64 {
     return std.math.pow(f64, x, y);
 }
 
-export fn ceil(x: f64) f64 {
-    return @ceil(x);
-}
-
 export fn fabs(x: f64) f64 {
     return @abs(x);
-}
-
-export fn sqrt(x: f64) f64 {
-    return @sqrt(x);
-}
-
-export fn log(x: f64) f64 {
-    return @log(x);
-}
-
-export fn log10(x: f64) f64 {
-    return @log10(x);
-}
-
-export fn log2(x: f64) f64 {
-    return @log2(x);
-}
-
-export fn exp(x: f64) f64 {
-    return @exp(x);
-}
-
-export fn sin(x: f64) f64 {
-    return @sin(x);
-}
-
-export fn cos(x: f64) f64 {
-    return @cos(x);
-}
-
-export fn tan(x: f64) f64 {
-    return @tan(x);
 }
 
 export fn asin(x: f64) f64 {
