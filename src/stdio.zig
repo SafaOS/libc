@@ -74,117 +74,104 @@ fn traverseFmt(self: std.io.AnyWriter, fmt: [*:0]const u8) !?[*:0]const u8 {
 }
 
 /// writes a formatted string a writern in a C-style format
-pub fn writeVarFmt(self: std.io.AnyWriter, fmt: [*:0]const u8, args: *VaList) !void {
+pub fn writeVarFmt(writer: std.io.AnyWriter, fmt: [*:0]const u8, args: *VaList) !void {
     var current = fmt;
+    zprintf("fmt: {s}\n", .{fmt});
+    const Writer = struct {
+        args: *VaList,
+        inner: std.io.AnyWriter,
 
-    while (current[0] != 0) {
-        current = try traverseFmt(self, current) orelse return;
-        current += 1;
-
-        const Fmt = packed struct {
-            const Kind = enum(u3) {
-                none,
-                dec,
-                long,
-                size_t,
-                // null terminated string literal
-                string,
-                // string pointer and length
-                sized_string,
-            };
-
-            const Flags = packed struct(u3) {
-                unsigned: bool = false,
-                hex: bool = false,
-                big_hex: bool = false,
-            };
-            kind: Kind = .none,
-            flags: Flags = .{},
-
-            // Sets the kind of self to `kind` returns whether or not to stop paring the fmt
-            fn setKind(this: *@This(), kind: Kind) bool {
-                return if (this.kind == .none) blk: {
-                    this.kind = kind;
-                    break :blk false;
-                } else true;
-            }
-
-            fn print_int(this: @This(), parent: @TypeOf(self), comptime T: type, comptime unsigned_T: type, value: T) !void {
-                if (this.flags.hex)
-                    return if (this.flags.unsigned) parent.print("{x}", .{@as(unsigned_T, @bitCast(value))}) else parent.print("{x}", .{value});
-                if (this.flags.big_hex)
-                    return if (this.flags.unsigned) parent.print("{X}", .{@as(unsigned_T, @bitCast(value))}) else parent.print("{X}", .{value});
-
-                return if (this.flags.unsigned) parent.print("{}", .{@as(unsigned_T, @bitCast(value))}) else parent.print("{}", .{value});
-            }
-
-            fn print_int_va(this: @This(), parent: @TypeOf(self), args_list: @TypeOf(args), comptime T: type, unsigned_T: type) !void {
-                const value = @cVaArg(args_list, T);
-                return this.print_int(parent, T, unsigned_T, value);
-            }
-        };
-
-        var spec: Fmt = .{};
-
-        while (current[0] != 0) {
-            const should_stop = switch (current[0]) {
-                'd' => spec.setKind(.dec),
-                'z' => spec.setKind(.size_t),
-                'u' => blk: {
-                    _ = spec.setKind(.dec);
-                    spec.flags.unsigned = true;
-                    break :blk false;
-                },
-                'l' => spec.setKind(.long),
-                'p' => blk: {
-                    if (spec.setKind(.size_t)) break :blk true;
-                    spec.flags.unsigned = true;
-                    spec.flags.hex = true;
-                    break :blk false;
-                },
-                'x' => blk: {
-                    _ = spec.setKind(.dec);
-                    spec.flags.hex = true;
-                    break :blk false;
-                },
-                'X' => blk: {
-                    _ = spec.setKind(.dec);
-                    spec.flags.big_hex = true;
-                    break :blk false;
-                },
-                's' => spec.setKind(.string),
-                '.' => switch (current[0]) {
-                    '*' => blk: {
-                        current += 1;
-                        break :blk switch (current[0]) {
-                            's' => spec.setKind(.sized_string),
-                            else => true,
-                        };
-                    },
-                    else => true,
-                },
-
-                else => true,
-            };
-            if (should_stop) break else current += 1;
+        fn print(self: @This(), comptime T: type) !void {
+            try self.inner.print("{}", .{@cVaArg(self.args, T)});
         }
 
-        switch (spec.kind) {
-            .string => {
-                const arg = @cVaArg(args, [*:0]const u8);
-                try self.print("{s}", .{arg});
+        fn printF(self: @This(), comptime f: []const u8, comptime T: type) !void {
+            try self.inner.print(f, .{@cVaArg(self.args, T)});
+        }
+
+        fn readArg(self: @This(), comptime T: type) T {
+            return @cVaArg(self.args, T);
+        }
+    };
+
+    const self = Writer{
+        .args = args,
+        .inner = writer,
+    };
+
+    while (current[0] != 0) : (current += 1) {
+        // returns null if the format string is finished
+        // returns the next character in the format string if a format specifier is found
+        current = try traverseFmt(self.inner, current) orelse return;
+        current += 1;
+
+        var precision: ?usize = null;
+        root: switch (current[0]) {
+            '%' => try self.inner.writeByte('%'),
+            'c' => try self.printF("{c}", u8),
+            's' => try self.printF("{s}", [*c]const u8),
+            'u' => try self.print(c_uint),
+            'i', 'd' => try self.print(c_int),
+            'X' => try self.printF("{X}", c_uint),
+            'x' => try self.printF("{x}", c_uint),
+            'o' => try self.printF("{o}", c_uint),
+            'p' => continue :root 'x',
+            'z' => {
+                switch (current[1]) {
+                    'u' => try self.print(usize),
+                    'd' => try self.print(isize),
+                    else => {
+                        try self.print(usize);
+                        continue;
+                    },
+                }
+
+                current += 1;
             },
-            .sized_string => {
-                const len = @cVaArg(args, usize);
-                const str = @cVaArg(args, [*c]const u8);
-                try self.print("{s}", .{str[0..len]});
+            'f' => try self.print(f32),
+            'g' => try self.print(f64),
+            '.' => {
+                if (current[1] == '*') {
+                    precision = self.readArg(usize);
+                    current += 1;
+                } else {
+                    var i: usize = 1;
+                    while (current[i] >= '0' and current[i] <= '9') : (i += 1) {
+                        precision = (precision orelse 0) * 10 + (current[i] - '0');
+                    }
+                    current += i;
+                }
+
+                continue :root current[0];
             },
-            .dec => try spec.print_int_va(self, args, c_int, c_uint),
-            .long => try spec.print_int_va(self, args, c_long, c_ulong),
-            .size_t => try spec.print_int_va(self, args, isize, usize),
-            .none => {
-                continue;
+            'l' => {
+                switch (current[1]) {
+                    'l' => {
+                        switch (current[2]) {
+                            'f' => try self.print(c_longdouble),
+                            'u' => try self.print(c_ulonglong),
+                            'd' => try self.print(c_longlong),
+                            else => {
+                                try self.print(c_longlong);
+                                continue;
+                            },
+                        }
+                        current += 1;
+                    },
+                    'f' => try self.print(f64),
+                    'u' => try self.print(c_ulong),
+                    'd' => try self.print(c_long),
+                    else => {
+                        try self.print(c_long);
+                        // makes sure `current` isn't incremented
+                        continue;
+                    },
+                }
+
+                current += 1;
             },
+
+            else => {},
         }
     }
 }
