@@ -35,7 +35,7 @@ pub extern fn syswait(pid: Pid, dest_status: ?*usize) SysResult;
 pub extern fn syssbrk(size: isize, dest_brk: *usize) SysResult;
 
 pub extern fn syspspawn(
-    name_ptr: [*]const u8,
+    name_ptr: ?[*]const u8,
     name_len: usize,
     path_ptr: [*]const u8,
     path_len: usize,

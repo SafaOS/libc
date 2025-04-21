@@ -3,6 +3,7 @@ const sys = @import("sys/root.zig");
 const libc = @import("root.zig");
 
 const api = sys.api;
+const abi = sys.abi;
 const syscalls = api.syscalls;
 const env = api.env;
 const alloc = api.alloc;
@@ -13,9 +14,25 @@ export fn abs(x: i32) u32 {
 
 // TODO: system is a stub
 // TODO: kernel version 0.2.1 should have environment variables soon
-export fn system(command: [*:0]const u8) c_int {
-    _ = command;
-    std.debug.panic("system() is not yet implemented", .{});
+export fn system(command_raw: [*c]const u8) c_int {
+    const shell_attempt = env.get("SHELL");
+    if (command_raw == null)
+        return if (shell_attempt) |_| 1 else 0;
+
+    const shell = shell_attempt orelse @panic("$SHELL not set");
+    const command = std.mem.span(command_raw);
+
+    var args = [_][]const u8{ shell, "-c", command };
+
+    const pid = api.syscalls.process.unsafe_spawn(command, shell, &args) catch |err| {
+        abi.errors.seterr(err);
+        return -1;
+    };
+
+    return @intCast(api.syscalls.process.wait(pid) catch |err| {
+        abi.errors.seterr(err);
+        return -1;
+    });
 }
 
 export fn exit(code: c_int) noreturn {

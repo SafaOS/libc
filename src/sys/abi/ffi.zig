@@ -11,10 +11,8 @@ pub fn Optional(comptime T: type) type {
         } = .{ .none = {} },
 
         pub fn from(value: ?T) Self {
-            return switch (value) {
-                null => Self{ .tag = .None },
-                else => Self{ .tag = .Some, .value = .{ .some = value } },
-            };
+            if (value) |v| return Self{ .tag = .Some, .value = .{ .some = v } };
+            return Self{ .tag = .None };
         }
 
         pub fn into(self: Self) ?T {
