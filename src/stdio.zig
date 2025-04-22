@@ -76,7 +76,6 @@ fn traverseFmt(self: std.io.AnyWriter, fmt: [*:0]const u8) !?[*:0]const u8 {
 /// writes a formatted string a writern in a C-style format
 pub fn writeVarFmt(writer: std.io.AnyWriter, fmt: [*:0]const u8, args: *VaList) !void {
     var current = fmt;
-    zprintf("fmt: {s}\n", .{fmt});
     const Writer = struct {
         args: *VaList,
         inner: std.io.AnyWriter,
