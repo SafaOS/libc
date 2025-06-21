@@ -181,3 +181,8 @@ export fn strtod(ptr: [*c]const u8, endptr: [*c][*c]u8) f64 {
 
     return result;
 }
+
+export fn atoi(c_str: [*c]const u8) c_int {
+    const str = std.mem.span(c_str);
+    return std.fmt.parseInt(c_int, str, 10) catch 0;
+}
