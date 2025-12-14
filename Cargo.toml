@@ -1,0 +1,8 @@
+[package]
+name = "salibc"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+libm = "0.2.15"
+safa-api = { git = "https://github.com/SafaOS/safa-api" }

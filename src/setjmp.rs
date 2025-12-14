@@ -1,0 +1,58 @@
+use core::ffi::c_int;
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C, packed)]
+struct JmpBufT {
+    rbx: usize,
+    rbp: usize,
+    r12: usize,
+    r13: usize,
+    r14: usize,
+    r15: usize,
+    rsp: usize,
+    rip: usize,
+}
+
+#[unsafe(no_mangle)]
+#[naked]
+pub extern "C" fn setjmp(buf: *const JmpBufT) -> c_int {
+    core::arch::naked_asm!(
+        "
+        movq %rbx, 0x0(%rdi)
+        movq %rbp, 0x8(%rdi)
+        movq %r12, 0x10(%rdi)
+        movq %r13, 0x18(%rdi)
+        movq %r14, 0x20(%rdi)
+        movq %r15, 0x28(%rdi)
+        leaq 0x8(%rsp), %rax
+        movq %rax, 0x30(%rdi)
+        movq (%rsp), %rax
+        movq %rax, 0x38(%rdi)
+        xorq %rax, %rax
+        ret
+        "
+    );
+}
+#[unsafe(no_mangle)]
+#[naked]
+pub extern "C" fn longjmp(buf: *const JmpBufT, val: c_int) -> ! {
+    core::arch::naked_asm!(
+        "
+       // set val to 1 if it is 0 and move it to the return register
+       xor %rax, %rax
+       movq $1, %rax
+       testl %esi, %esi
+       cmovnzl %esi, %eax
+       // restore
+       movq 0x0(%rdi), %rbx
+       movq 0x8(%rdi), %rbp
+       movq 0x10(%rdi), %r12
+       movq 0x18(%rdi), %r13
+       movq 0x20(%rdi), %r14
+       movq 0x28(%rdi), %r15
+       movq 0x30(%rdi), %rsp
+       movq 0x38(%rdi), %rsi
+       jmp *%rsi
+        "
+    );
+}
