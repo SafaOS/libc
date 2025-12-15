@@ -1,6 +1,8 @@
 use core::ffi::{c_char, c_int};
 use core::{ptr, slice};
 
+use crate::stdlib::malloc;
+
 #[unsafe(no_mangle)]
 pub extern "C" fn strlen(cstr: *const c_char) -> usize {
     let mut p = cstr;
@@ -258,5 +260,16 @@ pub extern "C" fn strpbrk(s: *const u8, accept: *const u8) -> *mut u8 {
             p = p.add(1);
         }
         ptr::null_mut()
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn strdup(str: *const u8) -> *mut u8 {
+    unsafe {
+        let len = strlen(str as *const c_char);
+        let new_str = malloc(len + 1) as *mut u8;
+        ptr::copy(str, new_str, len);
+        *new_str.add(len) = 0;
+        new_str
     }
 }
