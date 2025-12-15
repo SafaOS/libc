@@ -1,48 +1,70 @@
 use core::{
     ffi::{CStr, c_char, c_int, c_void},
+    mem::MaybeUninit,
     ptr::null_mut,
 };
 
-use safa_api::{
-    abi::fs::OpenOptions,
-    errors::ErrorStatus,
-    syscalls::{fs, io, resources, types::Ri},
-};
+use safa_api::{abi::fs::OpenOptions, errors::ErrorStatus, syscalls::fs};
 
 use crate::{
-    file::{File, SeekPosition},
+    SyncUnsafeCell,
+    file::{BufferingOption, File, Reader, SeekPosition},
+    format::BufWriter,
+    string::strlen,
     try_errno,
 };
 
 extern crate alloc;
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec::Vec};
+
+#[used]
+pub static STDIN_RAW: SyncUnsafeCell<MaybeUninit<File>> =
+    SyncUnsafeCell::new(MaybeUninit::uninit());
+#[used]
+pub static STDOUT_RAW: SyncUnsafeCell<MaybeUninit<File>> =
+    SyncUnsafeCell::new(MaybeUninit::uninit());
+#[used]
+pub static STDERR_RAW: SyncUnsafeCell<MaybeUninit<File>> =
+    SyncUnsafeCell::new(MaybeUninit::uninit());
+
+#[derive(Debug)]
+pub struct StdIo(pub SyncUnsafeCell<*mut File>);
+unsafe impl Send for StdIo {}
+unsafe impl Sync for StdIo {}
+
+#[unsafe(no_mangle)]
+pub static stdin: StdIo = StdIo(SyncUnsafeCell::new(null_mut()));
+#[unsafe(no_mangle)]
+pub static stdout: StdIo = StdIo(SyncUnsafeCell::new(null_mut()));
+#[unsafe(no_mangle)]
+pub static stderr: StdIo = StdIo(SyncUnsafeCell::new(null_mut()));
 
 // ==========================
 // File management
 // ==========================
 
-fn fopen_inner(filename: *const c_char, mode: *const c_char) -> File {
+fn fopen_inner(filename: *const c_char, mode: *const c_char) -> Option<File> {
     let cstr_path = unsafe { CStr::from_ptr(filename) };
     let cstr_mode = unsafe { CStr::from_ptr(mode) };
 
     let path = try_errno!(
         cstr_path.to_str().map_err(|_| ErrorStatus::InvalidStr),
-        null_mut()
+        None
     );
 
-    let options = OpenOptions::from_bits(0);
-    let append = false;
-    let create_new = false;
+    let mut options = OpenOptions::from_bits(0);
+    let mut append = false;
+    let mut create_new = false;
 
     for b in cstr_mode.to_bytes() {
         match b {
-            'w' => options = options | OpenOptions::WRITE | OpenOptions::CREATE_FILE,
-            'a' => {
+            b'w' => options = options | OpenOptions::WRITE | OpenOptions::CREATE_FILE,
+            b'a' => {
                 options = options | OpenOptions::CREATE_FILE;
                 append = true
             }
-            'r' => options = options | OpenOptions::READ,
-            'x' => create_new = true,
+            b'r' => options = options | OpenOptions::READ,
+            b'x' => create_new = true,
             _ => continue,
         }
     }
@@ -51,29 +73,32 @@ fn fopen_inner(filename: *const c_char, mode: *const c_char) -> File {
         && File::open(path, OpenOptions::from_bits(0)) != Err(ErrorStatus::NoSuchAFileOrDirectory)
     // File exists
     {
-        return null_mut();
+        return None;
     }
 
-    let f = try_errno!(File::open(path, options), null_mut());
+    let mut f = try_errno!(File::open(path, options), None);
     if append {
         f.seek(SeekPosition::End(0));
     }
-    f
+    Some(f)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn fopen(filename: *const c_char, mode: *const c_char) -> *mut File {
-    Box::leak(Box::new(fopen_inner(filename, mode)))
+    match fopen_inner(filename, mode) {
+        Some(o) => Box::leak(Box::new(o)),
+        None => null_mut(),
+    }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn fclose(file: *mut File) -> c_int {
     let boxed = unsafe { Box::from_raw(file) };
     try_errno!(boxed.close(), -1);
     0
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn freopen(
     filename: *const c_char,
     mode: *const c_char,
@@ -81,24 +106,25 @@ pub extern "C" fn freopen(
 ) -> *mut File {
     let mut old = unsafe { Box::from_raw(file) };
     unsafe { try_errno!(old.close_ref(), null_mut()) };
-    *old = fopen_inner(filename, mode);
+    let Some(new) = fopen_inner(filename, mode) else {
+        return null_mut();
+    };
+
+    *old = new;
 
     Box::leak(old)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn remove(path: *const c_char) -> c_int {
-    let cstr_path = unsafe { CStr::from_ptr(filename) };
-    let path = try_errno!(
-        cstr_path.to_str().map_err(|_| ErrorStatus::InvalidStr),
-        null_mut()
-    );
+    let cstr_path = unsafe { CStr::from_ptr(path) };
+    let path = try_errno!(cstr_path.to_str().map_err(|_| ErrorStatus::InvalidStr), -1);
 
     try_errno!(fs::remove_path(path), -1);
     0
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rename(old: *const c_char, new: *const c_char) -> c_int {
     let _ = (old, new);
     todo!("rename")
@@ -108,7 +134,7 @@ pub extern "C" fn rename(old: *const c_char, new: *const c_char) -> c_int {
 // Reading / writing
 // ==========================
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn fread(
     ptr: *mut c_void,
     size: usize,
@@ -120,118 +146,186 @@ pub unsafe extern "C" fn fread(
     try_errno!(stream.read(buf), core::usize::MAX)
 }
 
-#[no_mangle]
-pub extern "C" fn fwrite(
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fwrite(
     ptr: *const c_void,
     size: usize,
     count: usize,
     stream: *mut File,
 ) -> usize {
-    let _ = (ptr, size, count, stream);
-    todo!("fwrite")
+    let stream = unsafe { &mut *stream };
+    let buf = unsafe { core::slice::from_raw_parts(ptr.cast::<u8>(), size * count) };
+    try_errno!(stream.write(buf), core::usize::MAX)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn fgetc(stream: *mut File) -> c_int {
-    let _ = stream;
-    todo!("fgetc")
+    let mut buf = [0u8; 1];
+    let stream = unsafe { &mut *stream };
+    try_errno!(stream.read(&mut buf), -1);
+    buf[0] as c_int
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn getc(stream: *mut File) -> c_int {
-    let _ = stream;
-    todo!("getc")
+    fgetc(stream)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn getchar() -> c_int {
-    todo!("getchar")
+    unsafe { fgetc(*stdin.0.get()) }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ungetc(c: c_int, stream: *mut File) -> c_int {
     let _ = (c, stream);
     todo!("ungetc")
 }
 
-#[no_mangle]
-pub extern "C" fn fputc(c: c_int, stream: *mut File) -> c_int {
-    let _ = (c, stream);
-    todo!("fputc")
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fputc(c: c_int, stream: *mut File) -> c_int {
+    let stream = unsafe { &mut *stream };
+    let buf = [c as u8];
+    loop {
+        let r = try_errno!(stream.write(&buf), -1);
+        if r == 1 {
+            return 0;
+        }
+    }
 }
 
-#[no_mangle]
-pub extern "C" fn fputs(s: *const c_char, stream: *mut File) -> c_int {
-    let _ = (s, stream);
-    todo!("fputs")
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fputs(s: *const c_char, stream: *mut File) -> c_int {
+    let stream = unsafe { &mut *stream };
+    let cstr = unsafe { CStr::from_ptr(s) };
+    let bytes = cstr.to_bytes();
+
+    loop {
+        let r = try_errno!(stream.write(bytes), -1);
+        if r == bytes.len() {
+            return 0;
+        }
+    }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn fgets(s: *mut c_char, size: c_int, stream: *mut File) -> *mut c_char {
-    let _ = (s, size, stream);
-    todo!("fgets")
+    let stream = unsafe { &mut *stream };
+    let size = size as usize;
+
+    let buf = unsafe { core::slice::from_raw_parts_mut(s.cast::<u8>(), size) };
+    let max = size - 1;
+
+    let amount = try_errno!(
+        stream.read_bytes_until_or_eof(&mut buf[..max], |c| c == b'\n'),
+        null_mut()
+    );
+
+    buf[amount] = 0;
+    s
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn fgetline(file: *mut File, len: *mut usize) -> *mut c_char {
+    unsafe {
+        let mut buf = Vec::new();
+
+        try_errno!(
+            (*file).read_bytes_until_or_eof_alloc(&mut buf, usize::MAX, |c| c == b'\n'),
+            null_mut()
+        );
+
+        *len = buf.len();
+
+        let p = buf.as_mut_ptr();
+        core::mem::forget(buf);
+        p as *mut c_char
+    }
+}
+
+#[unsafe(no_mangle)]
+// TODO: add Custom buffering
+extern "C" fn setvbuf(file: *mut File, custom_buffer: *mut u8, mode: u8, size: usize) -> c_int {
+    let Some(mode) = BufferingOption::from_u8(mode) else {
+        return -1;
+    };
+
+    assert_eq!(
+        custom_buffer,
+        null_mut(),
+        "Custom buffering isn't yet supported"
+    );
+    unsafe {
+        (*file).set_buffering(mode, size);
+    }
+    return 0;
 }
 
 // ==========================
 // Positioning
 // ==========================
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn fseek(stream: *mut File, offset: c_int, whence: c_int) -> c_int {
-    let _ = (stream, offset, whence);
-    todo!("fseek")
+    let pos = match (whence, offset >= 0) {
+        (0, true) => SeekPosition::Start(offset as usize),
+        (0, false) => SeekPosition::End((-offset) as usize),
+        (1, true | false) => SeekPosition::Current(offset as isize),
+        (2, true) => SeekPosition::End(offset as usize),
+        (2, false) => SeekPosition::Start((-offset) as usize),
+        _ => return -1,
+    };
+
+    unsafe {
+        (*stream).seek(pos);
+        0
+    }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ftell(stream: *mut File) -> c_int {
-    let _ = stream;
-    todo!("ftell")
-}
-
-#[no_mangle]
-pub extern "C" fn rewind(stream: *mut File) {
-    let _ = stream;
-    todo!("rewind")
+    let stream = unsafe { &*stream };
+    stream.offset() as c_int
 }
 
 // ==========================
 // State / errors
 // ==========================
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn feof(stream: *mut File) -> c_int {
-    let _ = stream;
-    todo!("feof")
+    let stream = unsafe { &*stream };
+    stream.is_eof() as c_int
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ferror(stream: *mut File) -> c_int {
     let _ = stream;
     todo!("ferror")
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn clearerr(stream: *mut File) {
     let _ = stream;
     todo!("clearerr")
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn fflush(stream: *mut File) -> c_int {
-    let _ = stream;
-    todo!("fflush")
+    let stream = unsafe { &mut *stream };
+    try_errno!(stream.flush().map(|()| 0), -1)
 }
 
 // ==========================
 // Temporary files
 // ==========================
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn tmpfile() -> *mut File {
     todo!("tmpfile")
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn tmpnam(s: *mut c_char) -> *mut c_char {
     let _ = s;
     todo!("tmpnam")
@@ -241,26 +335,49 @@ pub extern "C" fn tmpnam(s: *mut c_char) -> *mut c_char {
 // Formatted output (varargs — intentionally unimplemented)
 // ==========================
 
-#[no_mangle]
-pub extern "C" fn printf(fmt: *const c_char /* ... */) -> c_int {
-    let _ = fmt;
-    todo!("printf (varargs)")
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn printf(fmt: *const c_char, mut args: ...) -> c_int {
+    let fmt = unsafe { CStr::from_ptr(fmt) };
+
+    match crate::format::printf_to(unsafe { &mut **stdout.0.get() }, fmt.to_bytes(), &mut args) {
+        Ok(_) => 0,
+        Err(_) => -1,
+    }
 }
 
-#[no_mangle]
-pub extern "C" fn fprintf(stream: *mut File, fmt: *const c_char /* ... */) -> c_int {
-    let _ = (stream, fmt);
-    todo!("fprintf (varargs)")
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fprintf(stream: *mut File, fmt: *const c_char, mut args: ...) -> c_int {
+    let fmt = unsafe { CStr::from_ptr(fmt) };
+
+    match crate::format::printf_to(unsafe { &mut *stream }, fmt.to_bytes(), &mut args) {
+        Ok(_) => 0,
+        Err(_) => -1,
+    }
 }
 
-#[no_mangle]
-pub extern "C" fn sprintf(s: *mut c_char, fmt: *const c_char /* ... */) -> c_int {
-    let _ = (s, fmt);
-    todo!("sprintf (varargs)")
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sprintf(s: *mut c_char, fmt: *const c_char, args: ...) -> c_int {
+    unsafe { snprintf(s, strlen(s) + 1, fmt, args) }
 }
 
-#[no_mangle]
-pub extern "C" fn snprintf(s: *mut c_char, n: usize, fmt: *const c_char /* ... */) -> c_int {
-    let _ = (s, n, fmt);
-    todo!("snprintf (varargs)")
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn snprintf(
+    s: *mut c_char,
+    n: usize,
+    fmt: *const c_char,
+    mut args: ...
+) -> c_int {
+    let fmt = unsafe { CStr::from_ptr(fmt) };
+    let stream = unsafe { core::slice::from_raw_parts_mut(s as *mut u8, n) };
+    match crate::format::printf_to(
+        &mut BufWriter::new(&mut stream[..n - 1]),
+        fmt.to_bytes(),
+        &mut args,
+    ) {
+        Ok(am) => {
+            stream[am] = 0;
+            am as c_int
+        }
+        Err(_) => -1,
+    }
 }

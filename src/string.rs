@@ -1,7 +1,7 @@
 use core::ffi::{c_char, c_int};
 use core::{ptr, slice};
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn strlen(cstr: *const c_char) -> usize {
     let mut p = cstr;
     let mut len = 0;
@@ -14,7 +14,7 @@ pub extern "C" fn strlen(cstr: *const c_char) -> usize {
     len
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn strnlen(cstr: *const c_char, maxlen: usize) -> usize {
     let mut p = cstr;
     let mut len = 0;
@@ -27,7 +27,7 @@ pub extern "C" fn strnlen(cstr: *const c_char, maxlen: usize) -> usize {
     len
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn strcpy(dest: *mut u8, src: *const u8) -> *mut u8 {
     unsafe {
         let len = strlen(src as *const c_char);
@@ -36,7 +36,7 @@ pub extern "C" fn strcpy(dest: *mut u8, src: *const u8) -> *mut u8 {
     dest
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn strncpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
     unsafe {
         let len = strnlen(src as *const c_char, n);
@@ -48,7 +48,7 @@ pub extern "C" fn strncpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
     dest
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn stpcpy(dest: *mut u8, src: *const u8) -> *mut u8 {
     unsafe {
         let len = strlen(src as *const c_char);
@@ -57,7 +57,7 @@ pub extern "C" fn stpcpy(dest: *mut u8, src: *const u8) -> *mut u8 {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn strspn(s: *const u8, accept: *const u8) -> usize {
     unsafe {
         let accept_len = strlen(accept as *const c_char);
@@ -78,7 +78,7 @@ pub extern "C" fn strspn(s: *const u8, accept: *const u8) -> usize {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn strcspn(s: *const u8, reject: *const u8) -> usize {
     unsafe {
         let reject_len = strlen(reject as *const c_char);
@@ -98,7 +98,7 @@ pub extern "C" fn strcspn(s: *const u8, reject: *const u8) -> usize {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn memchr(p: *const u8, c: c_int, n: usize) -> *const u8 {
     unsafe {
         let byte = c as u8;
@@ -111,7 +111,7 @@ pub extern "C" fn memchr(p: *const u8, c: c_int, n: usize) -> *const u8 {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn strchr(s: *const u8, c: c_int) -> *const u8 {
     unsafe {
         let byte = c as u8;
@@ -126,7 +126,7 @@ pub extern "C" fn strchr(s: *const u8, c: c_int) -> *const u8 {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn strrchr(s: *const u8, c: c_int) -> *const u8 {
     unsafe {
         let byte = c as u8;
@@ -143,7 +143,7 @@ pub extern "C" fn strrchr(s: *const u8, c: c_int) -> *const u8 {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn strstr(haystack: *const u8, needle: *const u8) -> *const u8 {
     unsafe {
         let hlen = strlen(haystack as *const c_char);
@@ -165,7 +165,7 @@ pub extern "C" fn strstr(haystack: *const u8, needle: *const u8) -> *const u8 {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn strcat(dest: *mut u8, src: *const u8) -> *mut u8 {
     unsafe {
         let dlen = strlen(dest as *const c_char);
@@ -175,7 +175,7 @@ pub extern "C" fn strcat(dest: *mut u8, src: *const u8) -> *mut u8 {
     dest
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn strcmp(s1: *const u8, s2: *const u8) -> c_int {
     unsafe {
         let mut p1 = s1;
@@ -192,7 +192,7 @@ pub extern "C" fn strcmp(s1: *const u8, s2: *const u8) -> c_int {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn strncmp(s1: *const u8, s2: *const u8, n: usize) -> c_int {
     unsafe {
         for i in 0..n {
@@ -209,7 +209,7 @@ pub extern "C" fn strncmp(s1: *const u8, s2: *const u8, n: usize) -> c_int {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn memset(
     ptr: *mut core::ffi::c_void,
     c: c_int,
@@ -222,7 +222,7 @@ pub extern "C" fn memset(
     ptr
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn memmove(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
     unsafe {
         ptr::copy(src, dest, n);
@@ -230,7 +230,7 @@ pub extern "C" fn memmove(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
     dest
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> c_int {
     unsafe {
         for i in 0..n {
@@ -244,7 +244,7 @@ pub extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> c_int {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn strpbrk(s: *const u8, accept: *const u8) -> *mut u8 {
     unsafe {
         let alen = strlen(accept as *const c_char);

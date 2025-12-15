@@ -1,18 +1,16 @@
-use core::num::Wrapping;
 use core::ptr::NonNull;
 use core::{
     ffi::{c_char, c_int, c_void},
-    mem, ptr, slice,
+    ptr, slice,
 };
 
 use safa_api::abi::process::SpawnFlags;
+use safa_api::alloc as api_alloc;
 use safa_api::process::env;
-use safa_api::syscalls::process;
-use safa_api::{alloc, env, process};
+use safa_api::syscalls;
 
 extern crate alloc;
 
-use crate::errno::set_error;
 use crate::string::strlen;
 use crate::try_errno;
 
@@ -29,53 +27,44 @@ unsafe fn cstr_to_str<'a>(p: *const c_char) -> Option<&'a str> {
     core::str::from_utf8(bytes).ok()
 }
 
-//
-// -- simple functions
-//
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn abs(x: i32) -> u32 {
-    x.wrapping_abs()
+    x.unsigned_abs()
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn exit(code: c_int) -> ! {
-    // map to safa-api raw syscall exit if you need: but safa-api process/syscalls modules can be used.
-    // TODO: adjust to safa_api::syscalls::exit if present. For now, call process::exit if provided.
-    // If safa_api exposes a direct exit syscall, use that.
-    // SAFETY: this should not return.
-    let _ = process::exit(code as u32); // if process::exit exists and is noreturn
-    loop {}
+    syscalls::process::exit(code as isize as usize)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn abort() -> ! {
-    let _ = process::exit(1u32);
-    loop {}
+    exit(-1)
 }
 
 const ALIGNMENT: usize = align_of::<usize>() * 2;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn malloc(size: usize) -> *mut c_void {
     if size == 0 {
         return ptr::null_mut();
     }
 
-    match alloc::GLOBAL_SYSTEM_ALLOCATOR.allocate(size, ALIGNMENT) {
+    match api_alloc::GLOBAL_SYSTEM_ALLOCATOR.allocate(size, ALIGNMENT) {
         Some(nonnull_slice) => nonnull_slice.as_ptr() as *mut c_void,
         None => ptr::null_mut(),
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn free(ptr: *mut c_void) {
     let non_null = NonNull::new(ptr);
     if let Some(p) = non_null {
-        unsafe { alloc::GLOBAL_SYSTEM_ALLOCATOR.deallocate(p.cast()) }
+        unsafe { api_alloc::GLOBAL_SYSTEM_ALLOCATOR.deallocate(p.cast()) }
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn calloc(nmemb: usize, size: usize) -> *mut c_void {
     match nmemb.checked_mul(size) {
         Some(total) => {
@@ -90,7 +79,7 @@ pub extern "C" fn calloc(nmemb: usize, size: usize) -> *mut c_void {
                     Err(_) => return ptr::null_mut(),
                 };
 
-                let p = alloc::GLOBAL_SYSTEM_ALLOCATOR.alloc_zeroed(layout);
+                let p = api_alloc::GLOBAL_SYSTEM_ALLOCATOR.alloc_zeroed(layout);
                 if p.is_null() {
                     ptr::null_mut()
                 } else {
@@ -102,7 +91,7 @@ pub extern "C" fn calloc(nmemb: usize, size: usize) -> *mut c_void {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn realloc(ptr: *mut c_void, new_size: usize) -> *mut c_void {
     if ptr.is_null() {
         return malloc(new_size);
@@ -120,7 +109,7 @@ pub extern "C" fn realloc(ptr: *mut c_void, new_size: usize) -> *mut c_void {
             Err(_) => return ptr::null_mut(),
         };
 
-        let newp = alloc::GLOBAL_SYSTEM_ALLOCATOR.realloc(ptr as *mut u8, layout, new_size);
+        let newp = api_alloc::GLOBAL_SYSTEM_ALLOCATOR.realloc(ptr as *mut u8, layout, new_size);
         if newp.is_null() {
             ptr::null_mut()
         } else {
@@ -132,8 +121,8 @@ pub extern "C" fn realloc(ptr: *mut c_void, new_size: usize) -> *mut c_void {
 //
 // -- environment + system/process
 //
-#[no_mangle]
-pub extern "C" fn getenv(name: *const c_char) -> *const c_char {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn getenv(name: *const c_char) -> *const c_char {
     if name.is_null() {
         return ptr::null();
     }
@@ -147,8 +136,12 @@ pub extern "C" fn getenv(name: *const c_char) -> *const c_char {
     ptr::null()
 }
 
-#[no_mangle]
-pub extern "C" fn setenv(name: *const c_char, value: *const c_char, overwrite: i32) -> c_int {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn setenv(
+    name: *const c_char,
+    value: *const c_char,
+    overwrite: i32,
+) -> c_int {
     if name.is_null() || value.is_null() {
         return -1;
     }
@@ -164,10 +157,11 @@ pub extern "C" fn setenv(name: *const c_char, value: *const c_char, overwrite: i
         }
 
         env::env_set(name_bytes, value_bytes);
+        0
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn unsetenv(name: *const c_char) -> c_int {
     if name.is_null() {
         return -1;
@@ -175,10 +169,11 @@ pub extern "C" fn unsetenv(name: *const c_char) -> c_int {
     unsafe {
         let name_bytes = cstr_to_bytes(name);
         env::env_remove(name_bytes);
+        0
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn system(command_raw: *const c_char) -> c_int {
     unsafe {
         let shell_opt = env::env_get(b"SHELL");
@@ -186,8 +181,8 @@ pub extern "C" fn system(command_raw: *const c_char) -> c_int {
             return if shell_opt.is_some() { 1 } else { 0 };
         }
 
-        let shell = match shell_opt {
-            Some(b) => match core::str::from_utf8(b) {
+        let shell = match shell_opt.as_ref() {
+            Some(b) => match core::str::from_utf8(&*b) {
                 Ok(s) => s,
                 Err(_) => return -1,
             },
@@ -208,7 +203,7 @@ pub extern "C" fn system(command_raw: *const c_char) -> c_int {
         // spawn + wait: safa-api has a process module for high-level process ops. Use it.
         // The exact function name / return type may vary by safa-api version; adjust if necessary.
         let pid = try_errno!(
-            process::spawn(
+            syscalls::process::spawn(
                 Some(shell),
                 shell,
                 args,
@@ -222,12 +217,12 @@ pub extern "C" fn system(command_raw: *const c_char) -> c_int {
             -1
         );
 
-        let status = try_errno!(process::wait(pid), -1);
+        let status = try_errno!(syscalls::process::wait(pid), -1);
         status as c_int
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn atoi(c_str: *const c_char) -> c_int {
     if c_str.is_null() {
         return 0;
@@ -244,8 +239,8 @@ pub extern "C" fn atoi(c_str: *const c_char) -> c_int {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn strtod(ptr: *const c_char, endptr: *mut *mut c_char) -> f64 {
+#[unsafe(no_mangle)]
+pub extern "C" fn strtod(ptr: *const c_char, endptr: *mut *const c_char) -> f64 {
     if ptr.is_null() {
         return 0.0;
     }

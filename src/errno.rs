@@ -2,12 +2,17 @@ use core::cell::UnsafeCell;
 
 use safa_api::errors::ErrorStatus;
 
-static ERRNO_RAW: UnsafeCell<Option<ErrorStatus>> = UnsafeCell::new(None);
+struct ErrorCell(UnsafeCell<u32>);
+unsafe impl Sync for ErrorCell {}
+unsafe impl Send for ErrorCell {}
+
+#[unsafe(no_mangle)]
+static errno: ErrorCell = ErrorCell(UnsafeCell::new(0));
 
 /// Sets system errorno to `status`.
 pub fn set_error(status: ErrorStatus) {
     unsafe {
-        *ERRNO_RAW.get() = Some(status);
+        *errno.0.get() = status as u32;
     }
 }
 
