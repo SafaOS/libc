@@ -6,6 +6,7 @@ pub mod errno;
 pub mod file;
 pub mod format;
 pub mod math;
+pub mod parse;
 pub mod setjmp;
 pub mod stdio;
 pub mod stdlib;

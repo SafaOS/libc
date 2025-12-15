@@ -7,7 +7,7 @@ use safa_api::{
     syscalls::{self, fs, io, resources, types::Ri},
 };
 
-use crate::{errno::set_error, format::CWriter};
+use crate::{errno::set_error, format::CWriter, parse::CReader};
 
 const INITIAL_BUFFERING_LEN: usize = 1024;
 
@@ -131,69 +131,7 @@ impl FileUnbuffered {
     }
 }
 
-pub trait Reader {
-    fn read_bytes(&mut self, buf: &mut [u8]) -> Result<usize, ErrorStatus>;
-    fn read_byte(&mut self) -> Result<Option<u8>, ErrorStatus> {
-        let mut buf = [0u8];
-        let r = self.read_bytes(&mut buf)?;
-        if r == 0 {
-            return Ok(None);
-        } else {
-            return Ok(Some(buf[0]));
-        }
-    }
-
-    fn read_bytes_until_or_eof<F: Fn(u8) -> bool>(
-        &mut self,
-        buf: &mut [u8],
-        until: F,
-    ) -> Result<usize, ErrorStatus> {
-        let mut read = 0;
-
-        while read < buf.len() {
-            let c = self.read_byte()?;
-            match c {
-                Some(c) => {
-                    buf[read] = c;
-                    read += 1;
-                    if until(c) {
-                        break;
-                    }
-                }
-                None => break,
-            }
-        }
-
-        Ok(read)
-    }
-
-    fn read_bytes_until_or_eof_alloc<F: Fn(u8) -> bool>(
-        &mut self,
-        buf: &mut Vec<u8>,
-        max: usize,
-        until: F,
-    ) -> Result<usize, ErrorStatus> {
-        let mut read = 0;
-
-        while read < max {
-            let c = self.read_byte()?;
-            match c {
-                Some(c) => {
-                    buf.push(c);
-                    read += 1;
-                    if until(c) {
-                        break;
-                    }
-                }
-                None => break,
-            }
-        }
-
-        Ok(read)
-    }
-}
-
-impl Reader for FileUnbuffered {
+impl CReader for FileUnbuffered {
     #[inline(always)]
     fn read_bytes(&mut self, buf: &mut [u8]) -> Result<usize, ErrorStatus> {
         self.read_unbuffered(buf)
@@ -395,7 +333,7 @@ impl File {
     }
 }
 
-impl Reader for File {
+impl CReader for File {
     fn read_bytes(&mut self, buf: &mut [u8]) -> Result<usize, ErrorStatus> {
         self.read(buf)
     }
