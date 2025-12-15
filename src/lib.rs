@@ -11,6 +11,7 @@ pub mod setjmp;
 pub mod stdio;
 pub mod stdlib;
 pub mod string;
+pub mod strings;
 
 pub extern crate alloc;
 
