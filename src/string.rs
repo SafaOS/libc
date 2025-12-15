@@ -212,19 +212,6 @@ pub extern "C" fn strncmp(s1: *const u8, s2: *const u8, n: usize) -> c_int {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn memset(
-    ptr: *mut core::ffi::c_void,
-    c: c_int,
-    n: usize,
-) -> *mut core::ffi::c_void {
-    unsafe {
-        let p = ptr as *mut u8;
-        core::ptr::write_bytes(p, c as u8, n);
-    }
-    ptr
-}
-
-#[unsafe(no_mangle)]
 pub extern "C" fn memmove(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
     unsafe {
         ptr::copy(src, dest, n);
