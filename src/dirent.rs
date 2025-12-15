@@ -7,7 +7,7 @@ use safa_api::{
     syscalls::{self, types::Ri},
 };
 
-use crate::{file::File, try_errno};
+use crate::{errno::set_error, file::File, try_errno};
 
 #[derive(Debug)]
 pub struct Dir {
@@ -47,6 +47,18 @@ impl Drop for Dir {
     fn drop(&mut self) {
         unsafe { self.close_ref().expect("Failed to close diriter") }
     }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn mkdir(path: *const c_char, mode: u32) -> c_int {
+    _ = mode;
+    let c_str = unsafe { CStr::from_ptr(path) };
+    let Ok(path) = c_str.to_str() else {
+        set_error(ErrorStatus::InvalidPath);
+        return -1;
+    };
+    try_errno!(File::open(path, OpenOptions::CREATE_DIRECTORY), -1);
+    0
 }
 
 #[unsafe(no_mangle)]
