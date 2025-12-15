@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
+#include <stdarg.h>
 
 #define EOF -1
 #define BUFSIZ 4096
@@ -14,8 +15,13 @@ extern FILE* stderr;
 
 ssize_t printf(const char* fmt, ...) __attribute__((format(printf,1,2)));
 ssize_t fprintf(FILE* f, const char* fmt, ...) __attribute__((format(printf,2,3)));
+ssize_t vfprintf(FILE* f, const char* fmt, va_list args);
 ssize_t snprintf(char* buf, size_t cap, const char* fmt, ...) __attribute__((format(printf,3,4)));
+ssize_t vsnprintf(char* buf, size_t cap, const char* fmt, va_list args);
 ssize_t sprintf(char* buf, const char* fmt, ...) __attribute__((format(printf,2, 3)));
+
+int fscanf(FILE* f, const char* fmt, ...) __attribute__((format(scanf,2,3)));
+int sscanf(const char* s, const char* fmt, ...) __attribute__((format(scanf,2,3)));
 
 FILE* fopen(const char *path, const char *mode);
 FILE *freopen(const char *path, const char *mode, FILE *stream);
@@ -34,8 +40,7 @@ char *fgets(char *buf, size_t size, FILE *f);
 int fputc(int c, FILE *f);
 
 int fputs(const char *str, FILE* stream);
-
-#define puts(str) fputs(str "\n", stdout)
+#define puts(str) printf("%s\n", str)
 
 int fflush(FILE* f);
 
@@ -45,6 +50,7 @@ int fflush(FILE* f);
 int fseek(FILE *f, long offset, int whence);
 
 int getchar();
+int putchar(int c);
 
 int remove(const char* path);
 int rename(const char* old_filename, const char* new_filename);

@@ -1,4 +1,4 @@
-use core::ffi::{CStr, VaListImpl, c_char, c_int, c_uint};
+use core::ffi::{CStr, c_char, c_int, c_uint};
 use core::fmt::Write;
 
 use safa_api::errors::ErrorStatus;
@@ -84,7 +84,7 @@ macro_rules! try_fmt {
 pub fn printf_to<W: CWriter>(
     writer: &mut W,
     fmt: &[u8],
-    var_args: &mut VaListImpl,
+    mut var_args: core::ffi::VaList,
 ) -> Result<usize, core::fmt::Error> {
     let mut current = fmt;
     let mut writer = CWriterWrapper(writer, 0);

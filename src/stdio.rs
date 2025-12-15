@@ -1,14 +1,15 @@
 use core::{
-    ffi::{CStr, c_char, c_int, c_void},
+    ffi::{CStr, VaList, c_char, c_int, c_void},
     mem::MaybeUninit,
     ptr::null_mut,
 };
 
 use safa_api::{abi::fs::OpenOptions, errors::ErrorStatus, syscalls::fs};
 
+use crate::parse::{BufReader, CReader};
 use crate::{
     SyncUnsafeCell,
-    file::{BufferingOption, File, Reader, SeekPosition},
+    file::{BufferingOption, File, SeekPosition},
     format::BufWriter,
     string::strlen,
     try_errno,
@@ -177,6 +178,11 @@ pub extern "C" fn getchar() -> c_int {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn putchar(c: c_int) -> c_int {
+    unsafe { fputc(c, *stdout.0.get()) }
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn ungetc(c: c_int, stream: *mut File) -> c_int {
     let _ = (c, stream);
     todo!("ungetc")
@@ -339,7 +345,11 @@ pub extern "C" fn tmpnam(s: *mut c_char) -> *mut c_char {
 pub unsafe extern "C" fn printf(fmt: *const c_char, mut args: ...) -> c_int {
     let fmt = unsafe { CStr::from_ptr(fmt) };
 
-    match crate::format::printf_to(unsafe { &mut **stdout.0.get() }, fmt.to_bytes(), &mut args) {
+    match crate::format::printf_to(
+        unsafe { &mut **stdout.0.get() },
+        fmt.to_bytes(),
+        args.as_va_list(),
+    ) {
         Ok(_) => 0,
         Err(_) => -1,
     }
@@ -347,9 +357,18 @@ pub unsafe extern "C" fn printf(fmt: *const c_char, mut args: ...) -> c_int {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fprintf(stream: *mut File, fmt: *const c_char, mut args: ...) -> c_int {
+    unsafe { vfprintf(stream, fmt, args.as_va_list()) }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn vfprintf(
+    stream: *mut File,
+    fmt: *const c_char,
+    args: core::ffi::VaList,
+) -> c_int {
     let fmt = unsafe { CStr::from_ptr(fmt) };
 
-    match crate::format::printf_to(unsafe { &mut *stream }, fmt.to_bytes(), &mut args) {
+    match crate::format::printf_to(unsafe { &mut *stream }, fmt.to_bytes(), args) {
         Ok(_) => 0,
         Err(_) => -1,
     }
@@ -367,12 +386,22 @@ pub unsafe extern "C" fn snprintf(
     fmt: *const c_char,
     mut args: ...
 ) -> c_int {
+    unsafe { vsnprintf(s, n, fmt, args.as_va_list()) }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn vsnprintf(
+    s: *mut c_char,
+    n: usize,
+    fmt: *const c_char,
+    args: VaList,
+) -> c_int {
     let fmt = unsafe { CStr::from_ptr(fmt) };
     let stream = unsafe { core::slice::from_raw_parts_mut(s as *mut u8, n) };
     match crate::format::printf_to(
         &mut BufWriter::new(&mut stream[..n - 1]),
         fmt.to_bytes(),
-        &mut args,
+        args,
     ) {
         Ok(am) => {
             stream[am] = 0;
@@ -380,4 +409,30 @@ pub unsafe extern "C" fn snprintf(
         }
         Err(_) => -1,
     }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fscanf(stream: *mut File, fmt: *const c_char, mut args: ...) -> c_int {
+    let fmt = unsafe { CStr::from_ptr(fmt) };
+    let stream = unsafe { &mut *stream };
+    try_errno!(
+        crate::parse::scanf_from(stream, fmt.to_bytes(), args.as_va_list()),
+        -1
+    );
+    0
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sscanf(s: *const c_char, fmt: *const c_char, mut args: ...) -> c_int {
+    let fmt = unsafe { CStr::from_ptr(fmt) };
+    let stream = unsafe { core::slice::from_raw_parts(s as *const u8, strlen(s)) };
+    let (_, matched) = try_errno!(
+        crate::parse::scanf_from(
+            &mut BufReader::new(stream),
+            fmt.to_bytes(),
+            args.as_va_list()
+        ),
+        -1
+    );
+    matched as c_int
 }
