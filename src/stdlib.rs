@@ -1,3 +1,4 @@
+use core::ffi::c_double;
 use core::ptr::NonNull;
 use core::{
     ffi::{c_char, c_int, c_void},
@@ -232,9 +233,26 @@ pub extern "C" fn atoi(c_str: *const c_char) -> c_int {
             return -1;
         };
 
-        match str.parse::<i32>() {
+        match str.parse::<c_int>() {
             Ok(v) => v,
             Err(_) => 0,
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn atof(c_str: *const c_char) -> c_double {
+    if c_str.is_null() {
+        return 0.;
+    }
+    unsafe {
+        let Some(str) = cstr_to_str(c_str) else {
+            return 0.;
+        };
+
+        match str.parse::<c_double>() {
+            Ok(v) => v,
+            Err(_) => 0.,
         }
     }
 }
