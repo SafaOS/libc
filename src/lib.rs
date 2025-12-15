@@ -63,7 +63,7 @@ extern "C" fn _libc_init(argc: i32, argv: *const *const u8) -> i32 {
 }
 
 #[unsafe(no_mangle)]
-unsafe extern "C" fn _start_inner(
+unsafe extern "C" fn _salibc_start(
     argc: usize,
     argv: *mut Str,
     envc: usize,
@@ -75,39 +75,6 @@ unsafe extern "C" fn _start_inner(
         let env = Slice::from_raw_parts(envp, envc);
         safa_api::process::init::_c_api_init(args, env, task_abi_structures, _libc_init)
     }
-}
-
-#[unsafe(no_mangle)]
-#[allow(unused)]
-#[unsafe(naked)]
-pub extern "C" fn _start(
-    argc: usize,
-    argv: *mut Str,
-    envc: usize,
-    envp: *mut Slice<u8>,
-    task_abi_structures: *const AbiStructures,
-) {
-    unsafe {
-        #[cfg(target_arch = "aarch64")]
-        core::arch::naked_asm!(
-            "
-            mov fp, #0
-            sub sp, sp, #16
-            stp xzr, xzr, [sp]
-            bl _start_inner
-            "
-        );
-        #[cfg(target_arch = "x86_64")]
-        core::arch::naked_asm!(
-            "
-            and rsp, ~0xf
-            push rbp
-            push rbp
-            call _start_inner
-            ud2
-        ",
-        );
-    };
 }
 
 #[derive(Debug)]
