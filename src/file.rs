@@ -91,7 +91,7 @@ impl FileUnbuffered {
     /// Reads into `buf` from the file at the current position.
     fn read_unbuffered(&mut self, buf: &mut [u8]) -> Result<usize, ErrorStatus> {
         let results = io::read(self.resource, self.offset, buf)?;
-        if self.offset >= 0 || self.offset < -1 {
+        if self.offset >= 0 {
             self.offset += results as isize;
         }
 
@@ -142,6 +142,7 @@ impl CReader for FileUnbuffered {
 pub struct File {
     inner: FileUnbuffered,
     buffering: BufferedIO,
+    closed: bool,
 }
 
 impl File {
@@ -153,6 +154,7 @@ impl File {
                 eof: false,
             },
             buffering: BufferedIO::None,
+            closed: false,
         };
         this.set_buffering(option, 0);
         this
@@ -171,6 +173,7 @@ impl File {
                 eof: false,
             },
             buffering: BufferedIO::None,
+            closed: false,
         })
     }
 
@@ -179,8 +182,13 @@ impl File {
     }
 
     pub unsafe fn close_ref(&mut self) -> Result<(), ErrorStatus> {
-        _ = self.flush();
-        resources::destroy_resource(self.inner.resource)
+        if !self.closed {
+            self.closed = true;
+            _ = self.flush();
+            resources::destroy_resource(self.inner.resource)
+        } else {
+            Ok(())
+        }
     }
 
     /// Writes `bytes` to file,
