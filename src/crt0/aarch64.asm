@@ -1,3 +1,5 @@
+.global _start
+
 _start:
     mov fp, #0
     sub sp, sp, #16

@@ -1,4 +1,5 @@
 extern _salibc_start
+global _start
 
 _start:
     and rsp, ~0xf
