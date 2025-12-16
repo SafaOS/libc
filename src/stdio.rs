@@ -204,12 +204,14 @@ pub unsafe extern "C" fn fputc(c: c_int, stream: *mut File) -> c_int {
 pub unsafe extern "C" fn fputs(s: *const c_char, stream: *mut File) -> c_int {
     let stream = unsafe { &mut *stream };
     let cstr = unsafe { CStr::from_ptr(s) };
-    let bytes = cstr.to_bytes();
+    let mut bytes = cstr.to_bytes();
 
     loop {
         let r = try_errno!(stream.write(bytes), -1);
         if r == bytes.len() {
             return 0;
+        } else {
+            bytes = &bytes[r..];
         }
     }
 }
@@ -352,6 +354,19 @@ pub unsafe extern "C" fn printf(fmt: *const c_char, mut args: ...) -> c_int {
     ) {
         Ok(_) => 0,
         Err(_) => -1,
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn puts(s: *const c_char) -> c_int {
+    unsafe {
+        let stdout_s = &mut **stdout.0.get();
+        let ret = fputs(s, stdout_s);
+        if ret != 0 {
+            return ret;
+        }
+
+        fputc(b'\n' as c_int, stdout_s)
     }
 }
 

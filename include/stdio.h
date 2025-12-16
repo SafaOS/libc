@@ -40,7 +40,7 @@ char *fgets(char *buf, size_t size, FILE *f);
 int fputc(int c, FILE *f);
 
 int fputs(const char *str, FILE* stream);
-#define puts(str) printf("%s\n", str)
+int puts(const char *str);
 
 int fflush(FILE* f);
 
