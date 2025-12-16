@@ -7,3 +7,6 @@ edition = "2024"
 libm = "0.2.15"
 safa-api = { git = "https://github.com/SafaOS/safa-api" }
 compiler_builtins = { version = "0.1", optional = true }
+
+[profile.release]
+debug-assertions = true
