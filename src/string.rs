@@ -4,7 +4,7 @@ use core::{ptr, slice};
 use crate::stdlib::malloc;
 
 #[unsafe(no_mangle)]
-pub extern "C" fn strlen(cstr: *const c_char) -> usize {
+pub unsafe extern "C" fn strlen(cstr: *const c_char) -> usize {
     let mut p = cstr;
     let mut len = 0;
     unsafe {
@@ -209,14 +209,6 @@ pub extern "C" fn strncmp(s1: *const u8, s2: *const u8, n: usize) -> c_int {
         }
         0
     }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn memmove(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
-    unsafe {
-        ptr::copy(src, dest, n);
-    }
-    dest
 }
 
 #[unsafe(no_mangle)]
