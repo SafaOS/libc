@@ -22,7 +22,7 @@ source = "git+https://github.com/SafaOS/safa-abi#3fbd1db53cd976181ff80fb4f5977ab
 [[package]]
 name = "safa-api"
 version = "0.4.3"
-source = "git+https://github.com/SafaOS/safa-api#af83094cb166b7fe92afc0e6cdb47e93572a417c"
+source = "git+https://github.com/SafaOS/safa-api#f39a9ca830bbed67dab601460d1686006830bc34"
 dependencies = [
  "safa-abi",
  "simpldns",

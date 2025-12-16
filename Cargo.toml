@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 libm = "0.2.15"
-safa-api = { git = "https://github.com/SafaOS/safa-api" }
+safa-api = { git = "https://github.com/SafaOS/safa-api", features = ["linkonce"] }
 compiler_builtins = { version = "0.1", optional = true }
 
 [profile.release]
