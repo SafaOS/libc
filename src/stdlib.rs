@@ -8,6 +8,7 @@ use core::{
 use safa_api::abi::process::SpawnFlags;
 use safa_api::alloc as api_alloc;
 use safa_api::process::env;
+use safa_api::process::stdio::{systry_get_stderr, systry_get_stdin, systry_get_stdout};
 use safa_api::syscalls;
 
 extern crate alloc;
@@ -19,7 +20,7 @@ unsafe fn cstr_to_bytes<'a>(p: *const c_char) -> &'a [u8] {
     if p.is_null() {
         return &[];
     }
-    let len = strlen(p);
+    let len = unsafe { strlen(p) };
     unsafe { slice::from_raw_parts(p as *const u8, len) }
 }
 
@@ -205,9 +206,9 @@ pub extern "C" fn system(command_raw: *const c_char) -> c_int {
                 args,
                 SpawnFlags::CLONE_CWD | SpawnFlags::CLONE_RESOURCES,
                 safa_api::abi::process::RawContextPriority::Default,
-                None,
-                None,
-                None,
+                systry_get_stdin().into(),
+                systry_get_stdout().into(),
+                systry_get_stderr().into(),
                 None,
             ),
             -1
