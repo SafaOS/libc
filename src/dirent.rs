@@ -9,6 +9,10 @@ use safa_api::{
 
 use crate::{errno::set_error, file::File, try_errno};
 
+pub fn entry_name(entry: &DirEntry) -> &str {
+    unsafe { str::from_utf8_unchecked(&entry.name[..entry.name_length]) }
+}
+
 #[derive(Debug)]
 pub struct Dir {
     ri: Ri,

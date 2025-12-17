@@ -1,13 +1,18 @@
 use core::{fmt::Write, mem::MaybeUninit};
 
-use alloc::{boxed::Box, vec::Vec};
+use alloc::{boxed::Box, format, vec::Vec};
 use safa_api::{
-    abi::fs::OpenOptions,
+    abi::fs::{FSObjectType, OpenOptions},
     errors::ErrorStatus,
     syscalls::{self, fs, io, resources, types::Ri},
 };
 
-use crate::{errno::set_error, format::CWriter, parse::CReader};
+use crate::{
+    dirent::{self, Dir},
+    errno::set_error,
+    format::CWriter,
+    parse::CReader,
+};
 
 const INITIAL_BUFFERING_LEN: usize = 1024;
 
@@ -367,5 +372,58 @@ impl Write for File {
 impl CWriter for File {
     fn write_bytes(&mut self, bytes: &[u8]) -> Result<usize, ErrorStatus> {
         self.write(bytes)
+    }
+}
+
+fn copy(from: &str, to: &str) -> Result<u64, ErrorStatus> {
+    let mut reader = File::open(from, OpenOptions::READ)?;
+    let mut writer = File::open(to, OpenOptions::WRITE | OpenOptions::CREATE_FILE)?;
+
+    let mut buf = [0u8; 1024];
+    let mut total = 0;
+    while let Ok(n) = reader.read(&mut buf)
+        && n > 0
+    {
+        writer.write(&buf[..n])?;
+        total += n as u64;
+    }
+    Ok(total)
+}
+
+pub fn rename(old: &str, new: &str) -> Result<(), ErrorStatus> {
+    let old_attrs = syscalls::fs::getdirentry(old)?;
+    // TODO: implement native rename syscall
+    match old_attrs.attrs.kind {
+        FSObjectType::File => {
+            copy(old, new)?;
+            syscalls::fs::remove_path(old)?;
+            Ok(())
+        }
+        FSObjectType::Directory => {
+            // create the new directory if it doesn't exist
+            if let Err(e) = syscalls::fs::createdir(new)
+                && e != ErrorStatus::AlreadyExists
+            {
+                return Err(e);
+            }
+
+            let mut dir = Dir::open(old)?;
+            while let Some(entry) = dir.next() {
+                let entry_name = dirent::entry_name(entry);
+                // special cases for '.' and '..' to avoid infinite recursion
+                if entry_name == "." || entry_name == ".." {
+                    continue;
+                }
+
+                let old_entry_path = format!("{old}/{entry_name}");
+                let new_entry_path = format!("{new}/{entry_name}");
+
+                rename(&old_entry_path, &new_entry_path)?;
+            }
+
+            syscalls::fs::remove_path(old)?;
+            Ok(())
+        }
+        _ => Err(ErrorStatus::NotSupported),
     }
 }

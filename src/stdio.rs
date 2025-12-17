@@ -9,7 +9,7 @@ use safa_api::{abi::fs::OpenOptions, errors::ErrorStatus, syscalls::fs};
 use crate::parse::{BufReader, CReader};
 use crate::{
     SyncUnsafeCell,
-    file::{BufferingOption, File, SeekPosition},
+    file::{self, BufferingOption, File, SeekPosition},
     format::BufWriter,
     string::strlen,
     try_errno,
@@ -127,8 +127,13 @@ pub extern "C" fn remove(path: *const c_char) -> c_int {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn rename(old: *const c_char, new: *const c_char) -> c_int {
-    let _ = (old, new);
-    todo!("rename")
+    let old_cstr = unsafe { CStr::from_ptr(old) };
+    let new_cstr = unsafe { CStr::from_ptr(new) };
+    let old_path = try_errno!(old_cstr.to_str().map_err(|_| ErrorStatus::InvalidStr), -1);
+    let new_path = try_errno!(new_cstr.to_str().map_err(|_| ErrorStatus::InvalidStr), -1);
+
+    try_errno!(file::rename(old_path, new_path), -1);
+    0
 }
 
 // ==========================
