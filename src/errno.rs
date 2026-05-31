@@ -6,6 +6,7 @@ struct ErrorCell(UnsafeCell<u32>);
 unsafe impl Sync for ErrorCell {}
 unsafe impl Send for ErrorCell {}
 
+#[thread_local]
 #[unsafe(no_mangle)]
 static errno: ErrorCell = ErrorCell(UnsafeCell::new(0));
 

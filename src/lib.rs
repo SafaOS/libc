@@ -1,5 +1,6 @@
 #![no_std]
 #![feature(c_variadic)]
+#![feature(thread_local)]
 
 pub mod dirent;
 pub mod errno;
@@ -7,6 +8,7 @@ pub mod file;
 pub mod format;
 pub mod math;
 pub mod parse;
+pub mod pthread;
 pub mod setjmp;
 pub mod stdio;
 pub mod stdlib;
