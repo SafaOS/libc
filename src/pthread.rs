@@ -8,8 +8,8 @@ use safa_api::{
     syscalls::{thread, types::Tid},
 };
 
-use crate::SyncUnsafeCell;
 use crate::try_errno;
+use crate::{SyncUnsafeCell, errno::set_error};
 
 type PThreadID = Tid;
 
@@ -134,5 +134,49 @@ pub extern "C" fn pthread_attr_destroy(attr: *mut PThreadAttributes) -> c_int {
 #[unsafe(no_mangle)]
 pub extern "C" fn sched_yield() -> c_int {
     thread::yield_now();
+    0
+}
+
+type PThreadMutex = Mutex<()>;
+
+#[unsafe(no_mangle)]
+pub extern "C" fn pthread_mutex_init(mutex: *mut PThreadMutex, attr: *const ()) -> c_int {
+    unsafe { *mutex = PThreadMutex::new(()) };
+    _ = attr;
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn pthread_mutex_destroy(mutex: *mut PThreadMutex) -> c_int {
+    _ = mutex;
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn pthread_mutex_trylock(mutex: *const PThreadMutex) -> c_int {
+    let mutex = unsafe { &*mutex };
+    match mutex.try_lock() {
+        Some(guard) => {
+            core::mem::forget(guard);
+            0
+        }
+        None => {
+            set_error(ErrorStatus::Busy);
+            ErrorStatus::Busy as c_int
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn pthread_mutex_lock(mutex: *const PThreadMutex) -> c_int {
+    unsafe { core::mem::forget((*mutex).lock()) };
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn pthread_mutex_unlock(mutex: *const PThreadMutex) -> c_int {
+    unsafe {
+        (*mutex).force_unlock();
+    };
     0
 }
