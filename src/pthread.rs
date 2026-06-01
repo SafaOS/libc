@@ -140,6 +140,12 @@ pub extern "C" fn sched_yield() -> c_int {
 type PThreadMutex = Mutex<()>;
 
 #[unsafe(no_mangle)]
+pub extern "C" fn pthread_mutexattr_init(attr: *mut u32) -> c_int {
+    unsafe { *attr = Default::default() };
+    0
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn pthread_mutex_init(mutex: *mut PThreadMutex, attr: *const ()) -> c_int {
     unsafe { *mutex = PThreadMutex::new(()) };
     _ = attr;

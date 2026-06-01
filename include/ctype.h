@@ -53,3 +53,7 @@ static inline int ispunct(int ch) {
            (ch >= 91  && ch <= 96 ) ||
            (ch >= 123 && ch <= 126);
 }
+
+static inline int isblank(int ch) {
+    return ch == ' ' || ch == '\t';
+}
