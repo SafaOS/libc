@@ -2,9 +2,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define time_t uint32_t
+#define time_t uint64_t
 #define clock_t time_t
-#define CLOCKS_PER_SEC 1
+#define CLOCKS_PER_SEC 1000
 
 struct tm {
     int tm_sec;
@@ -20,9 +20,6 @@ struct tm {
 
 time_t time(time_t *time);
 clock_t clock(void);
-struct tm *localtime(const time_t *time);
-struct tm *gmtime(const time_t *time);
 
 time_t mktime(struct tm *time);
 #define difftime(t1, t2) ((double)(t1) - (double)(t2))
-size_t strftime(char *s, size_t max, const char *format, const struct tm *tm);
