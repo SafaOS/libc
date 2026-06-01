@@ -126,6 +126,23 @@ pub extern "C" fn pthread_attr_setstacksize(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn pthread_attr_setdetachstate(
+    attr: *mut PThreadAttributes,
+    detach_state: c_int,
+) -> c_int {
+    if detach_state != 0 && detach_state != 1 {
+        return ErrorStatus::InvalidArgument as c_int;
+    }
+    // If not joinable
+    if detach_state != 0 {
+        safa_api::printerrln!(
+            "pthread_attr_setdetachstate({attr:?}, {detach_state}): TODO implement detachable threads",
+        );
+    }
+    0
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn pthread_attr_destroy(attr: *mut PThreadAttributes) -> c_int {
     _ = attr;
     0

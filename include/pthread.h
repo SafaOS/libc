@@ -9,6 +9,9 @@ typedef int pthread_mutex_t ;
 typedef int pthread_mutexattr_t;
 const pthread_mutex_t PTHREAD_MUTEX_INITIALIZER = 0;
 
+const int PTHREAD_CREATE_JOINABLE = 0;
+const int PTHREAD_CREATE_DETACHED = 1;
+
 pthread_t pthread_self(void);
 [[noreturn]] void pthread_exit(void *retval);
 
@@ -18,6 +21,11 @@ int pthread_join(pthread_t thread, void **retval);
 
 int pthread_attr_init(pthread_attr_t *attr);
 int pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize);
+int pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate);
+static inline int pthread_attr_getdetachstate(pthread_attr_t *attr, int *detachstate) {
+    // TODO: change when detach state is implemented
+    return PTHREAD_CREATE_JOINABLE;
+}
 int pthread_attr_destroy(pthread_attr_t *attr);
 
 int pthread_mutexattr_init(pthread_attr_t *attr);
