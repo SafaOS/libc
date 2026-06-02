@@ -56,6 +56,18 @@ pub struct TimeVal {
     pub tv_usec: u32,
 }
 
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct TimeSpec {
+    pub tv_sec: TimeT,
+    pub tv_nsec: u32,
+}
+impl TimeSpec {
+    pub fn to_duration(&self) -> core::time::Duration {
+        core::time::Duration::new(self.tv_sec as u64, self.tv_nsec as u32)
+    }
+}
+
 pub struct TimeZone;
 
 #[unsafe(no_mangle)]

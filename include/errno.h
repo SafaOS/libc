@@ -55,3 +55,4 @@ extern int errno;
 #define ETYPEMISMATCH        0x24
 #define EINVALIDSIZE         0x27
 #define EFORCETERMINATED     0x28
+#define EINTR                EFORCETERMINATED

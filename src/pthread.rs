@@ -1,15 +1,19 @@
-use core::{ffi::c_int, num::NonZero};
+use core::{ffi::c_int, num::NonZero, sync::atomic::AtomicU32};
 
 use alloc::{boxed::Box, vec::Vec};
 use safa_api::{
     abi::process::RawContextPriority,
     errors::ErrorStatus,
     sync::locks::Mutex,
-    syscalls::{thread, types::Tid},
+    syscalls::{
+        futex::{futex_wait, futex_wake},
+        thread,
+        types::Tid,
+    },
 };
 
-use crate::try_errno;
 use crate::{SyncUnsafeCell, errno::set_error};
+use crate::{time::TimeSpec, try_errno};
 
 type PThreadID = Tid;
 
@@ -201,5 +205,106 @@ pub extern "C" fn pthread_mutex_unlock(mutex: *const PThreadMutex) -> c_int {
     unsafe {
         (*mutex).force_unlock();
     };
+    0
+}
+
+#[repr(C)]
+#[derive(Default)]
+pub struct PCondvar {
+    val: AtomicU32,
+}
+
+#[repr(C)]
+pub struct PCondvarAttr;
+
+#[unsafe(no_mangle)]
+pub extern "C" fn pthread_condvar_init(condvar: *mut PCondvar, attr: *const PCondvarAttr) -> c_int {
+    unsafe { *condvar = Default::default() };
+    _ = attr;
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn pthread_condattr_init(attr: *mut PCondvarAttr) -> c_int {
+    _ = attr;
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn pthread_condattr_destroy(attr: *mut PCondvarAttr) -> c_int {
+    _ = attr;
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn pthread_condvar_destroy(condvar: *mut PCondvar) -> c_int {
+    _ = condvar;
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn pthread_condvar_timedwait(
+    condvar: *mut PCondvar,
+    mutex: *const PThreadMutex,
+    timeout_p: *const TimeSpec,
+) -> c_int {
+    let mutex = unsafe { &*mutex };
+    let condvar = unsafe { &mut *condvar };
+    let timeout = if timeout_p.is_null() {
+        core::time::Duration::MAX
+    } else {
+        unsafe { *timeout_p }.to_duration()
+    };
+
+    let seq = condvar.val.load(core::sync::atomic::Ordering::Acquire);
+    unsafe {
+        mutex.force_unlock();
+    }
+    let res = futex_wait(&condvar.val, seq, timeout);
+
+    let guard = mutex.lock();
+    core::mem::forget(guard);
+
+    match res {
+        Ok(()) => 0,
+        Err(ErrorStatus::Timeout) if timeout_p.is_null() => {
+            return pthread_condvar_timedwait(condvar, mutex, timeout_p);
+        }
+        Err(ErrorStatus::Timeout) => {
+            set_error(ErrorStatus::Timeout);
+            ErrorStatus::Timeout as c_int
+        }
+        Err(e) => {
+            set_error(e);
+            -1
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn pthread_condvar_wait(
+    condvar: *mut PCondvar,
+    mutex: *const PThreadMutex,
+) -> c_int {
+    return pthread_condvar_timedwait(condvar, mutex, core::ptr::null());
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn pthread_condvar_signal(condvar: *mut PCondvar) -> c_int {
+    let condvar = unsafe { &mut *condvar };
+    condvar
+        .val
+        .fetch_add(1, core::sync::atomic::Ordering::Release);
+    try_errno!(futex_wake(&condvar.val, 1), -1);
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn pthread_condvar_broadcast(condvar: *mut PCondvar) -> c_int {
+    let condvar = unsafe { &mut *condvar };
+    condvar
+        .val
+        .fetch_add(1, core::sync::atomic::Ordering::Release);
+    try_errno!(futex_wake(&condvar.val, usize::MAX), -1);
     0
 }
