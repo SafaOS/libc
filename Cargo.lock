@@ -15,6 +15,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
 
 [[package]]
+name = "rand_core"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69"
+
+[[package]]
+name = "rand_pcg"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "caa0f4137e1c0a72f4c651489402276c8e8e1cf081f3b0ba156d2cbeef09e86a"
+dependencies = [
+ "rand_core",
+]
+
+[[package]]
 name = "safa-abi"
 version = "0.5.4"
 source = "git+https://github.com/SafaOS/safa-abi#3fbd1db53cd976181ff80fb4f5977aba3399b3a3"
@@ -34,6 +49,7 @@ version = "0.1.0"
 dependencies = [
  "compiler_builtins",
  "libm",
+ "rand_pcg",
  "safa-api",
 ]
 

@@ -1,10 +1,12 @@
-use core::ffi::c_double;
+use core::ffi::{c_double, c_uint};
 use core::ptr::NonNull;
 use core::{
     ffi::{c_char, c_int, c_void},
     ptr, slice,
 };
 
+use rand_pcg::Pcg32;
+use rand_pcg::rand_core::{Rng, SeedableRng};
 use safa_api::abi::process::SpawnFlags;
 use safa_api::alloc as api_alloc;
 use safa_api::process::env;
@@ -14,7 +16,7 @@ use safa_api::syscalls;
 extern crate alloc;
 
 use crate::string::strlen;
-use crate::try_errno;
+use crate::{SyncUnsafeCell, try_errno};
 
 unsafe fn cstr_to_bytes<'a>(p: *const c_char) -> &'a [u8] {
     if p.is_null() {
@@ -281,4 +283,25 @@ pub extern "C" fn strtod(ptr: *const c_char, endptr: *mut *const c_char) -> f64 
             }
         }
     }
+}
+
+static RNG: SyncUnsafeCell<Option<Pcg32>> = SyncUnsafeCell::new(None);
+#[unsafe(no_mangle)]
+pub extern "C" fn srand(seed: c_uint) {
+    if seed == 1 {
+        unsafe {
+            (*RNG.get()) = Some(Pcg32::new(0xcafef00dd15ea5e5, 0xa02bdbf7bb3c0a7));
+        }
+        return;
+    }
+    unsafe {
+        (*RNG.get()) = Some(Pcg32::seed_from_u64(seed as u64));
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rand() -> c_int {
+    let rng = unsafe { &mut (*RNG.get()) }
+        .get_or_insert_with(|| Pcg32::new(0xcafef00dd15ea5e5, 0xa02bdbf7bb3c0a7));
+    rng.next_u32() as c_int
 }

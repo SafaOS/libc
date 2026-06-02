@@ -21,3 +21,6 @@ int unsetenv(const char *name);
 
 int atoi(const char* str);
 double atof(const char* str);
+
+void srand(unsigned int seed);
+int rand(void);
