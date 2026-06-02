@@ -1,4 +1,4 @@
-use core::ffi::{c_char, c_int, c_long};
+use core::ffi::{CStr, c_char, c_int, c_long};
 
 use crate::errno::set_error;
 
@@ -133,4 +133,31 @@ pub extern "C" fn gmtime_r(timer: *const TimeT, result: *mut TM) -> *mut TM {
     result.tm_zone = b"UTC\0".as_ptr() as *const c_char;
 
     return result;
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn strftime(
+    s: *mut c_char,
+    max: usize,
+    format: *const c_char,
+    time: *const TM,
+    locale: *const (),
+) -> usize {
+    if max == 0 {
+        return 0;
+    }
+
+    let time = unsafe { *time };
+    let s = unsafe { core::slice::from_raw_parts_mut(s.cast::<u8>(), max) };
+    let format = unsafe { CStr::from_ptr(format) };
+    _ = format;
+    _ = time;
+    _ = locale;
+
+    const TO_WRITE: &[u8] = b"strftime(): NOT IMPLEMENTED";
+    let len = s.len().min(TO_WRITE.len()).saturating_sub(1);
+    s[..len].copy_from_slice(&TO_WRITE[..len]);
+    s[len] = 0;
+
+    len
 }

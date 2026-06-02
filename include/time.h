@@ -47,3 +47,6 @@ static inline struct tm *localtime(time_t *time) {
 static inline struct tm *gmtime(time_t *time) {
     return localtime(time);
 }
+
+
+size_t strftime(char *s, size_t max, const char *format, struct tm *time);
