@@ -69,7 +69,7 @@ pub extern "C" fn gettimeofday(tv: *mut TimeVal, tz: *mut TimeZone) -> c_int {
     unsafe {
         *tv = TimeVal {
             tv_sec: uptime / 1000,
-            tv_usec: (uptime % 1000) as u32,
+            tv_usec: ((uptime * 1000) % 1000) as u32,
         }
     };
 

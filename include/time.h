@@ -20,6 +20,12 @@ struct tm {
     const char *tm_zone;
 };
 
+
+struct timespec {
+    long tv_sec;
+    long tv_nsec;
+};
+
 time_t time(time_t *time);
 clock_t clock(void);
 
