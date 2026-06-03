@@ -5,7 +5,7 @@ int abs(int num);
 
 int system(const char* command);
 void exit(int code) __attribute__ ((noreturn));
-void atexit(void (*func(void)));
+int atexit(void (*func)(void));
 
 void* malloc(size_t size);
 void* calloc(size_t elm, size_t size);
