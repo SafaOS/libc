@@ -8,10 +8,10 @@ typedef uint32_t pthread_t;
 typedef int pthread_attr_t;
 typedef int pthread_mutex_t ;
 typedef int pthread_mutexattr_t;
-const pthread_mutex_t PTHREAD_MUTEX_INITIALIZER = 0;
+#define PTHREAD_MUTEX_INITIALIZER 0
 
-const int PTHREAD_CREATE_JOINABLE = 0;
-const int PTHREAD_CREATE_DETACHED = 1;
+#define PTHREAD_CREATE_JOINABLE 0
+#define PTHREAD_CREATE_DETACHED 1
 
 pthread_t pthread_self(void);
 [[noreturn]] void pthread_exit(void *retval);
@@ -39,7 +39,7 @@ int pthread_mutex_unlock(pthread_mutex_t *mutex);
 typedef int pthread_cond_t;
 typedef int pthread_condattr_t;
 
-const pthread_cond_t PTHREAD_COND_INITIALIZER = 0;
+#define PTHREAD_COND_INITIALIZER  0
 
 int pthread_cond_init(pthread_cond_t *cond, pthread_condattr_t *cond_attr);
 int pthread_cond_signal(pthread_cond_t *cond);
