@@ -1,6 +1,8 @@
 use core::ffi::{c_char, c_int};
 use core::{ptr, slice};
 
+use safa_api::errors::ErrorStatus;
+
 use crate::stdlib::malloc;
 
 #[unsafe(no_mangle)]
@@ -251,4 +253,59 @@ pub extern "C" fn strdup(str: *const u8) -> *mut u8 {
         *new_str.add(len) = 0;
         new_str
     }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn strerror(errno: c_int) -> *const c_char {
+    let e = errno as isize;
+
+    use ErrorStatus::*;
+    match ErrorStatus::from_u16(e as u16) {
+        InvalidSize => c"Invalid Size",
+        AddressNotFound => c"Address Not Found",
+        TooShort => c"Too Short",
+        Generic => c"Generic Error",
+        OperationNotSupported => c"Operation Not Supported",
+        NotSupported => c"Object Not Supported",
+        Corrupted => c"Corrupted",
+        InvalidSyscall => c"Invalid Syscall",
+        UnknownResource => c"Unknown Resource ID",
+        UnsupportedResource => c"Resource not supported by that Operation",
+        ResourceCloneFailed => c"Failed to clone Resource",
+        TypeMismatch => c"Type Mismatch",
+        InvalidPid => c"Invalid PID",
+        InvalidTid => c"Invalid TID",
+        InvalidOffset => c"Invalid Offset",
+        InvalidPtr => c"Invalid Ptr (not aligned or null)",
+        InvalidStr => c"Invalid Str (not utf8)",
+        StrTooLong => c"Str too Long",
+        InvalidPath => c"Invalid Path",
+        NoSuchAFileOrDirectory => c"No Such a File or Directory",
+        NotAFile => c"Not a File",
+        NotADirectory => c"Not a Directory",
+        AlreadyExists => c"Already Exists",
+        NotExecutable => c"Not Executable",
+        DirectoryNotEmpty => c"Directory not Empty",
+        MissingPermissions => c"Missing Permissions",
+        MMapError => c"Memory Map Error (most likely out of memory)",
+        Busy => c"Resource Busy",
+        NotEnoughArguments => c"Not Enough Arguments",
+        OutOfMemory => c"Out of Memory",
+        InvalidArgument => c"Invalid Argument",
+        InvalidCommand => c"Invalid Command",
+        Unknown => c"Operation Unknown",
+        Panic => c"Unrecoverable Panick",
+        Timeout => c"Operation Timeouted",
+        NotADevice => c"Not A Device",
+        ConnectionClosed => c"Connection Closed",
+        ConnectionRefused => c"Connection Refused",
+        WouldBlock => c"Operation Would Block",
+        ForceTerminated => c"Operation Terminated",
+        AddressAlreadyInUse => c"Address Already In Use",
+        NotBound => c"Interface Not Bound",
+        HostUnreachable => c"Host Unreachable",
+        NetworkUnreachable => c"Network Unreachable",
+        ProtocolNotSupported => c"Protocol Not Supported",
+    }
+    .as_ptr()
 }
