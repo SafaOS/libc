@@ -1,5 +1,5 @@
 use core::{
-    ffi::{CStr, VaList, c_char, c_int, c_void},
+    ffi::{CStr, VaList, c_char, c_int, c_uint, c_void},
     mem::MaybeUninit,
     ptr::null_mut,
 };
@@ -148,7 +148,9 @@ pub unsafe extern "C" fn fread(
     stream: *mut File,
 ) -> usize {
     let stream = unsafe { &mut *stream };
-    let buf = unsafe { core::slice::from_raw_parts_mut(ptr.cast::<u8>(), size * count) };
+    let buf = unsafe {
+        core::slice::from_raw_parts_mut(ptr.cast::<u8>(), (size * count).min(isize::MAX as usize))
+    };
     try_errno!(stream.read(buf), core::usize::MAX)
 }
 
@@ -224,7 +226,7 @@ pub unsafe extern "C" fn fputs(s: *const c_char, stream: *mut File) -> c_int {
 #[unsafe(no_mangle)]
 pub extern "C" fn fgets(s: *mut c_char, size: c_int, stream: *mut File) -> *mut c_char {
     let stream = unsafe { &mut *stream };
-    let size = size as usize;
+    let size = size as c_uint as usize;
 
     let buf = unsafe { core::slice::from_raw_parts_mut(s.cast::<u8>(), size) };
     let max = size - 1;
@@ -416,15 +418,26 @@ pub unsafe extern "C" fn vsnprintf(
     fmt: *const c_char,
     args: VaList,
 ) -> c_int {
+    if s.is_null() || fmt.is_null() {
+        return 0;
+    }
+
     let fmt = unsafe { CStr::from_ptr(fmt) };
-    let stream = unsafe { core::slice::from_raw_parts_mut(s as *mut u8, n) };
+    let stream =
+        unsafe { core::slice::from_raw_parts_mut(s as *mut u8, n.min(isize::MAX as usize)) };
+    let len = stream.len();
+
+    if len == 0 {
+        return 0;
+    }
+
     match crate::format::printf_to(
-        &mut BufWriter::new(&mut stream[..n - 1]),
+        &mut BufWriter::new(&mut stream[..len - 1]),
         fmt.to_bytes(),
         args,
     ) {
         Ok(am) => {
-            stream[am] = 0;
+            stream[am.min(len - 1)] = 0;
             am as c_int
         }
         Err(_) => -1,

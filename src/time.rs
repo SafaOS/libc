@@ -160,7 +160,8 @@ pub extern "C" fn strftime(
     }
 
     let time = unsafe { *time };
-    let s = unsafe { core::slice::from_raw_parts_mut(s.cast::<u8>(), max) };
+    let s =
+        unsafe { core::slice::from_raw_parts_mut(s.cast::<u8>(), max.min(isize::MAX as usize)) };
     let format = unsafe { CStr::from_ptr(format) };
     _ = format;
     _ = time;
