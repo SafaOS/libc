@@ -36,11 +36,6 @@ pub extern "C" fn abs(x: i32) -> u32 {
     x.unsigned_abs()
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn exit(code: c_int) -> ! {
-    syscalls::process::exit(code as isize as usize)
-}
-
 const ALIGNMENT: usize = align_of::<usize>() * 2;
 
 #[unsafe(no_mangle)]

@@ -4,6 +4,7 @@
 
 pub mod dirent;
 pub mod errno;
+pub mod exit;
 pub mod file;
 pub mod format;
 pub mod math;
@@ -26,6 +27,7 @@ use safa_api::abi::process::AbiStructures;
 use safa_api::ffi::{slice::Slice, str::Str};
 use safa_api::process::stdio::{systry_get_stderr, systry_get_stdin, systry_get_stdout};
 
+use crate::exit::exit;
 use crate::file::File;
 use crate::stdio::{STDERR_RAW, STDIN_RAW, STDOUT_RAW, stderr, stdin, stdout};
 
@@ -77,7 +79,13 @@ unsafe extern "C" fn _salibc_start(
     unsafe {
         let args = Slice::from_raw_parts(argv, argc);
         let env = Slice::from_raw_parts(envp, envc);
-        safa_api::process::init::_c_api_init(args, env, task_abi_structures, _libc_init)
+        safa_api::process::init::_c_api_init(
+            args,
+            env,
+            task_abi_structures,
+            _libc_init,
+            *(exit as *const extern "C" fn(i32) -> ! as *const extern "C" fn(i32)),
+        )
     }
 }
 

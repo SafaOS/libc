@@ -43,7 +43,7 @@ impl Dir {
     }
 
     pub unsafe fn close_ref(&mut self) -> Result<(), ErrorStatus> {
-        syscalls::resources::destroy_resource(self.ri)
+        syscalls::resources::destroy(self.ri)
     }
 }
 

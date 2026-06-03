@@ -190,7 +190,7 @@ impl File {
         if !self.closed {
             self.closed = true;
             _ = self.flush();
-            resources::destroy_resource(self.inner.resource)
+            resources::destroy(self.inner.resource)
         } else {
             Ok(())
         }

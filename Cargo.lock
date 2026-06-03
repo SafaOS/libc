@@ -31,13 +31,13 @@ dependencies = [
 
 [[package]]
 name = "safa-abi"
-version = "0.5.4"
-source = "git+https://github.com/SafaOS/safa-abi#3fbd1db53cd976181ff80fb4f5977aba3399b3a3"
+version = "0.6.0"
+source = "git+https://github.com/SafaOS/safa-abi#8cd5ff0c0f9ecb570f0a2686c763a7402003c20c"
 
 [[package]]
 name = "safa-api"
-version = "0.4.3"
-source = "git+https://github.com/SafaOS/safa-api#67bf70174a0a249b28704c5c7ca56de744a99cbc"
+version = "0.6.0"
+source = "git+https://github.com/SafaOS/safa-api#9374b7b567f484e2bd73205eac0894b5e1169af3"
 dependencies = [
  "safa-abi",
  "simpldns",
