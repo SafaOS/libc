@@ -218,7 +218,7 @@ pub struct PCondvar {
 pub struct PCondvarAttr;
 
 #[unsafe(no_mangle)]
-pub extern "C" fn pthread_condvar_init(condvar: *mut PCondvar, attr: *const PCondvarAttr) -> c_int {
+pub extern "C" fn pthread_cond_init(condvar: *mut PCondvar, attr: *const PCondvarAttr) -> c_int {
     unsafe { *condvar = Default::default() };
     _ = attr;
     0
@@ -237,13 +237,13 @@ pub extern "C" fn pthread_condattr_destroy(attr: *mut PCondvarAttr) -> c_int {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn pthread_condvar_destroy(condvar: *mut PCondvar) -> c_int {
+pub extern "C" fn pthread_cond_destroy(condvar: *mut PCondvar) -> c_int {
     _ = condvar;
     0
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn pthread_condvar_timedwait(
+pub extern "C" fn pthread_cond_timedwait(
     condvar: *mut PCondvar,
     mutex: *const PThreadMutex,
     timeout_p: *const TimeSpec,
@@ -268,7 +268,7 @@ pub extern "C" fn pthread_condvar_timedwait(
     match res {
         Ok(()) => 0,
         Err(ErrorStatus::Timeout) if timeout_p.is_null() => {
-            return pthread_condvar_timedwait(condvar, mutex, timeout_p);
+            return pthread_cond_timedwait(condvar, mutex, timeout_p);
         }
         Err(ErrorStatus::Timeout) => {
             set_error(ErrorStatus::Timeout);
@@ -282,15 +282,12 @@ pub extern "C" fn pthread_condvar_timedwait(
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn pthread_condvar_wait(
-    condvar: *mut PCondvar,
-    mutex: *const PThreadMutex,
-) -> c_int {
-    return pthread_condvar_timedwait(condvar, mutex, core::ptr::null());
+pub extern "C" fn pthread_cond_wait(condvar: *mut PCondvar, mutex: *const PThreadMutex) -> c_int {
+    return pthread_cond_timedwait(condvar, mutex, core::ptr::null());
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn pthread_condvar_signal(condvar: *mut PCondvar) -> c_int {
+pub extern "C" fn pthread_cond_signal(condvar: *mut PCondvar) -> c_int {
     let condvar = unsafe { &mut *condvar };
     condvar
         .val
@@ -300,7 +297,7 @@ pub extern "C" fn pthread_condvar_signal(condvar: *mut PCondvar) -> c_int {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn pthread_condvar_broadcast(condvar: *mut PCondvar) -> c_int {
+pub extern "C" fn pthread_cond_broadcast(condvar: *mut PCondvar) -> c_int {
     let condvar = unsafe { &mut *condvar };
     condvar
         .val

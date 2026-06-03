@@ -11,6 +11,7 @@ pub mod math;
 pub mod parse;
 pub mod pthread;
 pub mod setjmp;
+pub mod signal;
 pub mod stdio;
 pub mod stdlib;
 pub mod string;
