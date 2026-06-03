@@ -2,8 +2,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define time_t uint64_t
-#define clock_t time_t
+#include "sys/types.h"
+
 #define CLOCKS_PER_SEC 1000
 
 struct tm {
