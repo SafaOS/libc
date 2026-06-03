@@ -1,4 +1,4 @@
-use core::cell::UnsafeCell;
+use core::{cell::UnsafeCell, ffi::c_int};
 
 use safa_api::errors::ErrorStatus;
 
@@ -9,6 +9,11 @@ unsafe impl Send for ErrorCell {}
 #[thread_local]
 #[unsafe(no_mangle)]
 static errno: ErrorCell = ErrorCell(UnsafeCell::new(0));
+
+#[unsafe(no_mangle)]
+pub extern "C" fn __errno_location() -> *mut c_int {
+    errno.0.get().cast()
+}
 
 /// Sets system errorno to `status`.
 pub fn set_error(status: ErrorStatus) {

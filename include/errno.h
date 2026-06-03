@@ -1,5 +1,6 @@
 #pragma once
-extern int errno;
+int* __errno_location(void);
+#define errno (*__errno_location())
 
 // AI GENERATED
 // I was to lazy to write this myself and also I did a very naive review soo....
