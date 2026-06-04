@@ -418,26 +418,32 @@ pub unsafe extern "C" fn vsnprintf(
     fmt: *const c_char,
     args: VaList,
 ) -> c_int {
-    if s.is_null() || fmt.is_null() {
-        return 0;
+    let fmt_str;
+    let stream;
+
+    if !fmt.is_null() {
+        fmt_str = unsafe { CStr::from_ptr(fmt) };
+    } else {
+        fmt_str = c"";
     }
 
-    let fmt = unsafe { CStr::from_ptr(fmt) };
-    let stream =
-        unsafe { core::slice::from_raw_parts_mut(s as *mut u8, n.min(isize::MAX as usize)) };
+    if !s.is_null() {
+        stream =
+            unsafe { core::slice::from_raw_parts_mut(s as *mut u8, n.min(isize::MAX as usize)) };
+    } else {
+        stream = &mut [];
+    }
+
     let len = stream.len();
-
-    if len == 0 {
-        return 0;
-    }
-
     match crate::format::printf_to(
-        &mut BufWriter::new(&mut stream[..len - 1]),
-        fmt.to_bytes(),
+        &mut BufWriter::new(&mut stream[..len.saturating_sub(1)]),
+        fmt_str.to_bytes(),
         args,
     ) {
         Ok(am) => {
-            stream[am.min(len - 1)] = 0;
+            if len != 0 {
+                stream[am.min(len - 1)] = 0;
+            }
             am as c_int
         }
         Err(_) => -1,

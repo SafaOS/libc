@@ -13,12 +13,12 @@ extern FILE* stdout;
 extern FILE* stdin ;
 extern FILE* stderr;
 
-ssize_t printf(const char* fmt, ...) __attribute__((format(printf,1,2)));
-ssize_t fprintf(FILE* f, const char* fmt, ...) __attribute__((format(printf,2,3)));
-ssize_t vfprintf(FILE* f, const char* fmt, va_list args);
-ssize_t snprintf(char* buf, size_t cap, const char* fmt, ...) __attribute__((format(printf,3,4)));
-ssize_t vsnprintf(char* buf, size_t cap, const char* fmt, va_list args);
-ssize_t sprintf(char* buf, const char* fmt, ...) __attribute__((format(printf,2, 3)));
+int printf(const char* fmt, ...) __attribute__((format(printf,1,2)));
+int fprintf(FILE* f, const char* fmt, ...) __attribute__((format(printf,2,3)));
+int vfprintf(FILE* f, const char* fmt, va_list args);
+int snprintf(char* buf, size_t cap, const char* fmt, ...) __attribute__((format(printf,3,4)));
+int vsnprintf(char* buf, size_t cap, const char* fmt, va_list args);
+int sprintf(char* buf, const char* fmt, ...) __attribute__((format(printf,2, 3)));
 
 int fscanf(FILE* f, const char* fmt, ...) __attribute__((format(scanf,2,3)));
 int sscanf(const char* s, const char* fmt, ...) __attribute__((format(scanf,2,3)));
