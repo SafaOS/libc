@@ -85,7 +85,7 @@ unsafe extern "C" fn _salibc_start(
             env,
             task_abi_structures,
             _libc_init,
-            *(exit as *const extern "C" fn(i32) -> ! as *const extern "C" fn(i32)),
+            core::mem::transmute(exit as *const ()),
         )
     }
 }
