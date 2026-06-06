@@ -5,6 +5,7 @@ use core::{
     ptr, slice,
 };
 
+use alloc::vec::Vec;
 use rand_pcg::Pcg32;
 use rand_pcg::rand_core::{Rng, SeedableRng};
 use safa_api::abi::process::SpawnFlags;
@@ -299,4 +300,39 @@ pub extern "C" fn rand() -> c_int {
     let rng = unsafe { &mut (*RNG.get()) }
         .get_or_insert_with(|| Pcg32::new(0xcafef00dd15ea5e5, 0xa02bdbf7bb3c0a7));
     rng.next_u32() as c_int
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn qsort(
+    base_ptr: *mut u8,
+    count: usize,
+    size: usize,
+    comp: extern "C" fn(*const u8, *const u8) -> c_int,
+) {
+    if base_ptr.is_null() || count <= 1 || size == 0 {
+        return;
+    }
+
+    let total_buf = unsafe { core::slice::from_raw_parts_mut(base_ptr, count * size) };
+    let mut elements = (0..count)
+        .map(|i| unsafe { total_buf.as_ptr().byte_add(i * size) })
+        .collect::<Vec<_>>();
+    elements.sort_unstable_by(|l, r| match comp(*l, *r) {
+        ..0 => core::cmp::Ordering::Less,
+        0 => core::cmp::Ordering::Equal,
+        1.. => core::cmp::Ordering::Greater,
+    });
+
+    let original = total_buf.to_vec();
+    for (elem_idx, ele_ptr) in elements.iter().enumerate() {
+        let elem_og_idx = (*ele_ptr as usize - base_ptr as usize) / size;
+
+        let src_idx_start = elem_og_idx * size;
+        let src_idx_end = src_idx_start + size;
+
+        let dst_idx_start = elem_idx * size;
+        let dst_idx_end = dst_idx_start + size;
+        total_buf[dst_idx_start..dst_idx_end]
+            .copy_from_slice(&original[src_idx_start..src_idx_end]);
+    }
 }

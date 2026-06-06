@@ -8,6 +8,7 @@ char* strcpy(char *dest, const char *src);
 char* strncpy(char *dest, const char *src, size_t count);
 char* stpcpy(char *dest, const char *src);
 char* strcat(char *dest, const char *src);
+char* strncat(char *dest, const char *src, size_t n);
 
 size_t strspn(const char* str, const char* accept);
 size_t strcspn(const char *str, const char *reject);
@@ -30,3 +31,9 @@ char *strerror(int errnum);
 double strtod(const char *str, char **str_end);
 char *strpbrk(const char *s, const char *accept);
 char *strdup(const char *str);
+
+char *strtok(char *str, const char *delimiters);
+
+// FUCKING QUAKE2GENERIC DOESN'T LIKE THESE n strings.h
+int strcasecmp(const char* a, const char* b);
+int strncasecmp(const char* a, const char* b, size_t n);

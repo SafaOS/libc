@@ -398,7 +398,7 @@ pub unsafe extern "C" fn vfprintf(
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn sprintf(s: *mut c_char, fmt: *const c_char, args: ...) -> c_int {
-    unsafe { snprintf(s, strlen(s) + 1, fmt, args) }
+    unsafe { snprintf(s, isize::MAX as usize, fmt, args) }
 }
 
 #[unsafe(no_mangle)]
@@ -409,6 +409,11 @@ pub unsafe extern "C" fn snprintf(
     mut args: ...
 ) -> c_int {
     unsafe { vsnprintf(s, n, fmt, args.as_va_list()) }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn vsprintf(s: *mut c_char, fmt: *const c_char, args: VaList) -> c_int {
+    unsafe { vsnprintf(s, isize::MAX as usize, fmt, args) }
 }
 
 #[unsafe(no_mangle)]

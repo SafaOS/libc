@@ -18,6 +18,7 @@ int fprintf(FILE* f, const char* fmt, ...) __attribute__((format(printf,2,3)));
 int vfprintf(FILE* f, const char* fmt, va_list args);
 int snprintf(char* buf, size_t cap, const char* fmt, ...) __attribute__((format(printf,3,4)));
 int vsnprintf(char* buf, size_t cap, const char* fmt, va_list args);
+int vsprintf(char *buf, const char *fmt, va_list args);
 int sprintf(char* buf, const char* fmt, ...) __attribute__((format(printf,2, 3)));
 
 int fscanf(FILE* f, const char* fmt, ...) __attribute__((format(scanf,2,3)));
@@ -37,6 +38,8 @@ int fgetc(FILE *f);
 #define getc(f) fgetc(f)
 int ungetc(int c, FILE *f);
 char *fgets(char *buf, size_t size, FILE *f);
+
+#define putc(c, f) fputc(c, f)
 int fputc(int c, FILE *f);
 
 int fputs(const char *str, FILE* stream);

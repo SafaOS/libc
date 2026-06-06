@@ -159,6 +159,8 @@ pub extern "C" fn sched_yield() -> c_int {
 }
 
 type PThreadMutex = Mutex<()>;
+const _: () = assert!(size_of::<PThreadMutex>() == size_of::<c_int>());
+const _: () = assert!(align_of::<PThreadMutex>() == align_of::<c_int>());
 
 #[unsafe(no_mangle)]
 pub extern "C" fn pthread_mutexattr_init(attr: *mut u32) -> c_int {
@@ -213,6 +215,9 @@ pub extern "C" fn pthread_mutex_unlock(mutex: *const PThreadMutex) -> c_int {
 pub struct PCondvar {
     val: AtomicU32,
 }
+
+const _: () = assert!(size_of::<PCondvar>() == size_of::<c_int>());
+const _: () = assert!(align_of::<PCondvar>() == align_of::<c_int>());
 
 #[repr(C)]
 pub struct PCondvarAttr;

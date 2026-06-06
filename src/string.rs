@@ -1,8 +1,9 @@
-use core::ffi::{c_char, c_int};
+use core::ffi::{CStr, c_char, c_int};
 use core::{ptr, slice};
 
 use safa_api::errors::ErrorStatus;
 
+use crate::SyncUnsafeCell;
 use crate::stdlib::malloc;
 
 #[unsafe(no_mangle)]
@@ -151,6 +152,10 @@ pub extern "C" fn strrchr(s: *const u8, c: c_int) -> *const u8 {
 pub extern "C" fn strstr(haystack: *const u8, needle: *const u8) -> *const u8 {
     unsafe {
         let hlen = strlen(haystack as *const c_char);
+        if hlen == 0 {
+            return core::ptr::null();
+        }
+
         let nlen = strlen(needle as *const c_char);
 
         if nlen == 0 {
@@ -167,6 +172,24 @@ pub extern "C" fn strstr(haystack: *const u8, needle: *const u8) -> *const u8 {
         }
         ptr::null()
     }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn strncat(mut dest: *mut c_char, str: *const c_char, n: usize) -> *mut c_char {
+    let ret = dest;
+    dest = unsafe { dest.add(strlen(dest as *const c_char)) };
+
+    if n == 0 {
+        return dest;
+    }
+
+    let str_len = strnlen(str, n);
+    unsafe {
+        dest.copy_from_nonoverlapping(str, str_len);
+        *dest.add(str_len + 1) = 0;
+    }
+
+    ret
 }
 
 #[unsafe(no_mangle)]
@@ -308,4 +331,48 @@ pub extern "C" fn strerror(errno: c_int) -> *const c_char {
         ProtocolNotSupported => c"Protocol Not Supported",
     }
     .as_ptr()
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn strtok(str: *mut c_char, delimiters: *const c_char) -> *const c_char {
+    let delimiters = if !delimiters.is_null() {
+        unsafe { CStr::from_ptr(delimiters) }.to_bytes()
+    } else {
+        c"".to_bytes()
+    };
+    struct STRTOKStorage {
+        work_str: *mut [u8],
+    }
+    unsafe impl Sync for STRTOKStorage {}
+    static STRTOK_ITER: SyncUnsafeCell<Option<STRTOKStorage>> = SyncUnsafeCell::new(None);
+    let strtok_storage = unsafe { &mut *STRTOK_ITER.get() };
+
+    let work_str;
+    if !str.is_null() {
+        work_str = unsafe { core::slice::from_raw_parts_mut(str.cast::<u8>(), strlen(str)) };
+        *strtok_storage = Some(STRTOKStorage { work_str });
+    } else if let Some(storage) = strtok_storage {
+        work_str = unsafe { &mut *storage.work_str };
+    } else {
+        return core::ptr::null();
+    }
+
+    work_str
+        .iter_mut()
+        .filter(|c| delimiters.contains(&**c))
+        .for_each(|c| *c = 0);
+    work_str
+        .iter()
+        .position(|c| *c != 0)
+        .map(|index| {
+            let slice = &mut work_str[index..];
+            let str_ptr = slice.as_ptr().cast::<c_char>();
+            let next_len = strnlen(str_ptr, slice.len());
+            *strtok_storage = Some(STRTOKStorage {
+                work_str: &mut slice[next_len..],
+            });
+
+            str_ptr
+        })
+        .unwrap_or(core::ptr::null())
 }

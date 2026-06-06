@@ -4,8 +4,17 @@ pub extern "C" fn ifloor(x: f64) -> i32 {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn iceli(x: f64) -> i32 {
+pub extern "C" fn floor(x: f64) -> f64 {
+    libm::floor(x)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn iceil(x: f64) -> i32 {
     libm::ceil(x) as i32
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn ceil(x: f64) -> f64 {
+    libm::ceil(x)
 }
 
 #[unsafe(no_mangle)]
@@ -80,4 +89,39 @@ pub extern "C" fn acosh(x: f64) -> f64 {
 #[unsafe(no_mangle)]
 pub extern "C" fn atanh(x: f64) -> f64 {
     libm::atanh(x)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn sin(x: f64) -> f64 {
+    libm::sin(x)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn cos(x: f64) -> f64 {
+    libm::cos(x)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn tan(x: f64) -> f64 {
+    libm::tan(x)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn fmod(x: f64, y: f64) -> f64 {
+    libm::fmod(x, y)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn fmodf(x: f32, y: f32) -> f32 {
+    libm::fmodf(x, y)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn sqrt(x: f64) -> f64 {
+    libm::sqrt(x)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn sqrtf(x: f32) -> f32 {
+    libm::sqrtf(x)
 }
