@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
-
+#include "stdlib.h"
 #include <sys/types.h>
 
 #define CLOCKS_PER_SEC 1000
@@ -39,7 +39,6 @@ static inline struct tm *localtime_r(time_t *time, struct tm *tm) {
 }
 
 static inline struct tm *localtime(time_t *time) {
-    #include "stdlib.h"
     struct tm *tm = (struct tm *)calloc(1, sizeof(struct tm));
     return localtime_r(time, tm);
 }

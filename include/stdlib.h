@@ -1,12 +1,12 @@
 #pragma once
 #include <stddef.h>
+#include "unistd.h"
 
 int abs(int num);
 
 int system(const char* command);
 void exit(int code) __attribute__ ((noreturn));
 static inline void _Exit(int code)  {
-    #include "unistd.h"
    _exit(code);
 }
 
