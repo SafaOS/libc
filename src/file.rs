@@ -141,6 +141,9 @@ impl CReader for FileUnbuffered {
     fn read_bytes(&mut self, buf: &mut [u8]) -> Result<usize, ErrorStatus> {
         self.read_unbuffered(buf)
     }
+    fn unread_byte(&mut self, _: u8) {
+        self.seek(SeekPosition::Current(-1));
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -349,6 +352,10 @@ impl File {
 impl CReader for File {
     fn read_bytes(&mut self, buf: &mut [u8]) -> Result<usize, ErrorStatus> {
         self.read(buf)
+    }
+
+    fn unread_byte(&mut self, _b: u8) {
+        self.seek(SeekPosition::Current(-1));
     }
 }
 

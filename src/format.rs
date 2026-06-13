@@ -1,4 +1,4 @@
-use core::ffi::{VaArgSafe, c_char, c_int, c_long, c_longlong, c_short, c_uint};
+use core::ffi::{VaArgSafe, c_char, c_double, c_float, c_int, c_long, c_longlong, c_short, c_uint};
 use core::ffi::{c_uchar, c_ulong, c_ulonglong, c_ushort};
 use core::fmt::Write;
 
@@ -158,6 +158,46 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
         unsafe { self.var_args.arg() }
     }
 
+    fn next_float(
+        &mut self,
+        unsigned: bool,
+        precision: Option<usize>,
+        length: LengthModifier,
+        prefer_sci: bool,
+    ) -> core::fmt::Result {
+        macro_rules! call_with {
+            ($fmt_no_prec:literal, $fmt_prec:literal) => {
+                match_arg!(
+                    self,
+                    length,
+                    {
+                    LengthModifier::None => (c_double, c_double) as (c_float, c_float),
+                    LengthModifier::Char => (c_double, c_double) as (c_float, c_float),
+                    LengthModifier::Short => (c_double, c_double) as (c_float, c_float),
+                    LengthModifier::Long => (c_double, c_double) as (c_float, c_float),
+                    LengthModifier::LongLong => (c_double, c_double),
+                    LengthModifier::LongDouble => (c_double, c_double),
+                    LengthModifier::SizeT => (c_double, c_double),
+                    LengthModifier::PtrDiffT => (c_double, c_double),
+                    LengthModifier::MaxT => (c_double, c_double),
+                    },
+                    unsigned,
+                    precision,
+                    $fmt_no_prec,
+                    $fmt_prec
+                )
+            };
+        }
+
+        // TODO: rust doesn't have an equalivent of %g or %a
+        if prefer_sci {
+            call_with!("{:e}", "{:0prec$}")
+        } else {
+            call_with!("{}", "{:0prec$}")
+        }
+        Ok(())
+    }
+
     fn next_int(
         &mut self,
         unsigned: bool,
@@ -273,6 +313,18 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
                 Kind::Normal,
                 precision,
                 length.unwrap_or(LengthModifier::None),
+            ),
+            b'a' | b'A' | b'f' => self.next_float(
+                false,
+                precision,
+                length.unwrap_or(LengthModifier::None),
+                false,
+            ),
+            b'g' | b'G' | b'e' | b'E' => self.next_float(
+                false,
+                precision,
+                length.unwrap_or(LengthModifier::None),
+                true,
             ),
             b'u' => self.next_int(
                 true,

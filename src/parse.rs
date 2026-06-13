@@ -1,4 +1,4 @@
-use core::ffi::{c_char, c_int, c_uint};
+use core::ffi::{c_char, c_float, c_int, c_uint};
 
 use alloc::vec::Vec;
 use safa_api::errors::ErrorStatus;
@@ -22,7 +22,33 @@ pub trait CReader {
             return Ok(Some(buf[0]));
         }
     }
+    fn unread_byte(&mut self, b: u8);
 
+    fn read_bytes_until_or_eof_excluding<F: FnMut(u8) -> bool>(
+        &mut self,
+        buf: &mut [u8],
+        mut until: F,
+    ) -> Result<usize, ErrorStatus> {
+        let mut read = 0;
+
+        while read < buf.len() {
+            let c = self.read_byte()?;
+            match c {
+                Some(c) => {
+                    if until(c) {
+                        self.unread_byte(c);
+                        break;
+                    }
+
+                    buf[read] = c;
+                    read += 1;
+                }
+                None => break,
+            }
+        }
+
+        Ok(read)
+    }
     fn read_bytes_until_or_eof<F: FnMut(u8) -> bool>(
         &mut self,
         buf: &mut [u8],
@@ -74,6 +100,9 @@ pub trait CReader {
 }
 
 impl<'a> CReader for BufReader<'a> {
+    fn unread_byte(&mut self, _b: u8) {
+        self.1 -= 1;
+    }
     fn read_bytes(&mut self, buf: &mut [u8]) -> Result<usize, ErrorStatus> {
         if self.0.len() <= self.1 {
             return Ok(buf.len());
@@ -96,6 +125,10 @@ impl<'a, T: CReader> CReader for CReaderWrapper<'a, T> {
         self.1 += am;
         Ok(am)
     }
+    fn unread_byte(&mut self, b: u8) {
+        self.0.unread_byte(b);
+        self.1 -= 1;
+    }
 }
 
 pub fn scanf_from<R: CReader>(
@@ -110,11 +143,27 @@ pub fn scanf_from<R: CReader>(
     macro_rules! parse_int {
         ($f: expr, $ty: ty, $radix:literal) => {
             let mut buf = [0u8; 64];
-            let read = reader.read_bytes_until_or_eof(&mut buf, $f)?;
+            let read = reader.read_bytes_until_or_eof_excluding(&mut buf, $f)?;
             let num_raw = &buf[..read];
 
             let num_str = unsafe { str::from_utf8_unchecked(&num_raw) };
             let num = <$ty>::from_str_radix(num_str, $radix).expect("Failed to parse an integer");
+            unsafe {
+                var_args.arg::<*mut $ty>().write(num as $ty);
+            }
+
+            matched += 1;
+        };
+    }
+
+    macro_rules! parse_float {
+        ($f: expr, $ty: ty) => {
+            let mut buf = [0u8; 128];
+            let read = reader.read_bytes_until_or_eof_excluding(&mut buf, $f)?;
+            let num_raw = &buf[..read];
+
+            let num_str = unsafe { str::from_utf8_unchecked(&num_raw) };
+            let num = num_str.parse::<$ty>().unwrap_or_else(|_| 0.);
             unsafe {
                 var_args.arg::<*mut $ty>().write(num as $ty);
             }
@@ -140,6 +189,29 @@ pub fn scanf_from<R: CReader>(
                         },
                         c_int,
                         10
+                    );
+                }
+                b'f' | b'e' | b'g' => {
+                    let mut start = true;
+                    let mut dotted = false;
+                    let mut has_e = false;
+                    parse_float!(
+                        |c| {
+                            let cond = !(c.is_ascii_digit()
+                                || (c == b'-' && start)
+                                || (c == b'.' && !dotted)
+                                || ((c == b'e' || c == b'E') && !has_e));
+
+                            start = false;
+                            if c == b'.' {
+                                dotted = true;
+                            }
+                            if c == b'e' || c == b'E' {
+                                has_e = true;
+                            }
+                            cond
+                        },
+                        c_float
                     );
                 }
                 b'u' => {
