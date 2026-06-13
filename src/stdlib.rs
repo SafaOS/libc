@@ -1,4 +1,4 @@
-use core::ffi::{c_double, c_uint};
+use core::ffi::{CStr, c_double, c_uint};
 use core::ptr::NonNull;
 use core::{
     ffi::{c_char, c_int, c_void},
@@ -28,8 +28,7 @@ unsafe fn cstr_to_bytes<'a>(p: *const c_char) -> &'a [u8] {
 }
 
 unsafe fn cstr_to_str<'a>(p: *const c_char) -> Option<&'a str> {
-    let bytes = unsafe { cstr_to_bytes(p) };
-    core::str::from_utf8(bytes).ok()
+    unsafe { CStr::from_ptr(p).to_str().ok() }
 }
 
 #[unsafe(no_mangle)]

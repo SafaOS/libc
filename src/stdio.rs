@@ -151,7 +151,7 @@ pub unsafe extern "C" fn fread(
     let buf = unsafe {
         core::slice::from_raw_parts_mut(ptr.cast::<u8>(), (size * count).min(isize::MAX as usize))
     };
-    try_errno!(stream.read(buf), core::usize::MAX)
+    try_errno!(stream.read(buf).map(|c| c / size), core::usize::MAX)
 }
 
 #[unsafe(no_mangle)]
@@ -163,7 +163,7 @@ pub unsafe extern "C" fn fwrite(
 ) -> usize {
     let stream = unsafe { &mut *stream };
     let buf = unsafe { core::slice::from_raw_parts(ptr.cast::<u8>(), size * count) };
-    try_errno!(stream.write(buf), core::usize::MAX)
+    try_errno!(stream.write(buf).map(|c| c / size), core::usize::MAX)
 }
 
 #[unsafe(no_mangle)]
@@ -397,8 +397,8 @@ pub unsafe extern "C" fn vfprintf(
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn sprintf(s: *mut c_char, fmt: *const c_char, args: ...) -> c_int {
-    unsafe { snprintf(s, isize::MAX as usize, fmt, args) }
+pub unsafe extern "C" fn sprintf(s: *mut c_char, fmt: *const c_char, mut args: ...) -> c_int {
+    unsafe { vsnprintf(s, isize::MAX as usize, fmt, args.as_va_list()) }
 }
 
 #[unsafe(no_mangle)]
