@@ -1,3 +1,6 @@
 [build]
 target = "x86_64-unknown-none"
 rustflags = ["-C", "force-unwind-tables"]
+[unstable]
+unstable-options = true
+build-std = ["core", "alloc"]
