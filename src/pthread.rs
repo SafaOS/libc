@@ -34,7 +34,8 @@ pub extern "C" fn pthread_exit(e: usize) -> ! {
     thread::exit(e)
 }
 
-extern "C" fn pthread_start_main(
+#[unsafe(no_mangle)]
+extern "C" fn pthread_start_main_inner(
     tid: PThreadID,
     arg: &'static (extern "C" fn(usize) -> usize, usize),
 ) -> ! {
@@ -45,6 +46,32 @@ extern "C" fn pthread_start_main(
     drop(arg);
     let result = start_routine(routine_arg) as usize;
     pthread_exit(result)
+}
+
+#[unsafe(naked)]
+pub extern "C" fn pthread_start_main(
+    tid: PThreadID,
+    arg: &'static (extern "C" fn(usize) -> usize, usize),
+) -> ! {
+    #[cfg(target_arch = "x86_64")]
+    core::arch::naked_asm!(
+        "
+                      and rsp, ~0xf
+                      push rbp
+                      push rbp
+                      mov rbp, rsp
+                      call pthread_start_main_inner
+                      "
+    );
+    #[cfg(target_arch = "aarch64")]
+    core::arch::naked_asm!(
+        "
+                      mov fp, #0
+                      sub sp, sp, #16
+                      stp xzr, xzr, [sp]
+                      bl pthread_start_main_inner
+                      "
+    );
 }
 
 #[unsafe(no_mangle)]
