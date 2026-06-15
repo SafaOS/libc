@@ -5,7 +5,10 @@
 #include <time.h>
 
 typedef uint32_t pthread_t;
-typedef int pthread_attr_t;
+typedef struct {
+    size_t stack;
+    char more[32];
+} pthread_attr_t;
 typedef int pthread_mutex_t ;
 typedef int pthread_mutexattr_t;
 #define PTHREAD_MUTEX_INITIALIZER 0
