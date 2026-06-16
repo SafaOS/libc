@@ -29,8 +29,7 @@ pub extern "C" fn pthread_self() -> PThreadID {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn pthread_exit(e: usize) -> ! {
-    let mut results = EXIT_RESULTS.lock();
-    results.push((pthread_self(), e));
+    _ = EXIT_RESULTS.lock().push((pthread_self(), e));
     thread::exit(e)
 }
 
