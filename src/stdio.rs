@@ -316,13 +316,14 @@ pub extern "C" fn feof(stream: *mut File) -> c_int {
 #[unsafe(no_mangle)]
 pub extern "C" fn ferror(stream: *mut File) -> c_int {
     let _ = stream;
-    todo!("ferror")
+    safa_api::printerrln!("ferror: Not yet implemented");
+    0
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn clearerr(stream: *mut File) {
     let _ = stream;
-    todo!("clearerr")
+    safa_api::printerrln!("clearerr: Not yet implemented");
 }
 
 #[unsafe(no_mangle)]
