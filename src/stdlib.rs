@@ -96,19 +96,11 @@ pub extern "C" fn realloc(ptr: *mut c_void, new_size: usize) -> *mut c_void {
     }
 
     unsafe {
-        use core::alloc::{GlobalAlloc, Layout};
-        // TODO: we cannot rely on size here, I use usize::MAX so GlobalAlloc would copy new_size bytes.
-        let layout = match Layout::from_size_align(usize::MAX, ALIGNMENT) {
-            Ok(l) => l,
-            Err(_) => return ptr::null_mut(),
-        };
+        let newp = malloc(new_size);
+        core::ptr::copy(ptr, newp, new_size);
+        free(ptr);
 
-        let newp = api_alloc::GLOBAL_SYSTEM_ALLOCATOR.realloc(ptr as *mut u8, layout, new_size);
-        if newp.is_null() {
-            ptr::null_mut()
-        } else {
-            newp as *mut c_void
-        }
+        newp
     }
 }
 
