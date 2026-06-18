@@ -13,6 +13,7 @@ int* __errno_location(void);
 #define EFAULT               0x09  /* InvalidPtr */
 #define EILSEQ               0x0A  /* InvalidStr */
 #define ENAMETOOLONG         0x0B  /* StrTooLong */
+#define ERANGE               0x0B
 #define ENOENT               0x0D  /* NoSuchAFileOrDirectory */
 #define ENOTDIR              0x0F  /* NotADirectory */
 #define EISDIR               0x0E  /* NotAFile */

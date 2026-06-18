@@ -26,3 +26,9 @@ pub extern "C" fn exit(code: c_int) -> ! {
 pub extern "C" fn _exit(code: c_int) -> ! {
     syscalls::process::exit(code as isize as usize)
 }
+
+#[unsafe(no_mangle)]
+// FIXME: more correct impl.
+pub extern "C" fn abort() -> ! {
+    exit(-1)
+}

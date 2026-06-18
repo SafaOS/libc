@@ -6,6 +6,8 @@ int abs(int num);
 
 int system(const char* command);
 void exit(int code) __attribute__ ((noreturn));
+void abort() __attribute__ ((noreturn));
+
 static inline void _Exit(int code)  {
    _exit(code);
 }
@@ -22,9 +24,7 @@ void free(void* addr);
 
 const char* getenv(const char *name);
 int setenv(const char *name, const char *value, int overwrite);
-static inline int putenv(const char *name) {
-    return setenv(name, "", 0);
-}
+int putenv(const char *name);
 
 int unsetenv(const char *name);
 
@@ -36,3 +36,10 @@ int rand(void);
 
 void qsort( void* ptr, size_t count, size_t size,
             int (*comp)(const void*, const void*) );
+
+
+double strtod (const char* str, char** endptr);
+long      strtol( const char*  str, char** str_end, int base );
+long long strtoll( const char* str, char** str_end, int base );
+unsigned long      strtoul ( const char* str, char** str_end, int base );
+unsigned long long strtoull( const char* str, char** str_end, int base );

@@ -9,6 +9,11 @@ pub extern "C" fn floor(x: f64) -> f64 {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn log(x: f64) -> f64 {
+    libm::log(x)
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn iceil(x: f64) -> i32 {
     libm::ceil(x) as i32
 }

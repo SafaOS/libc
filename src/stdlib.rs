@@ -1,8 +1,9 @@
-use core::ffi::{CStr, c_double, c_uint};
+use core::ffi::{CStr, c_double, c_long, c_longlong, c_uint, c_ulong, c_ulonglong};
+use core::num::IntErrorKind;
 use core::ptr::NonNull;
 use core::{
     ffi::{c_char, c_int, c_void},
-    ptr, slice,
+    ptr,
 };
 
 use alloc::vec::Vec;
@@ -10,21 +11,22 @@ use rand_pcg::Pcg32;
 use rand_pcg::rand_core::{Rng, SeedableRng};
 use safa_api::abi::process::SpawnFlags;
 use safa_api::alloc as api_alloc;
+use safa_api::errors::ErrorStatus;
 use safa_api::process::env;
 use safa_api::process::stdio::{systry_get_stderr, systry_get_stdin, systry_get_stdout};
 use safa_api::syscalls;
 
 extern crate alloc;
 
-use crate::string::strlen;
+use crate::errno::set_error;
 use crate::{SyncUnsafeCell, try_errno};
 
 unsafe fn cstr_to_bytes<'a>(p: *const c_char) -> &'a [u8] {
     if p.is_null() {
         return &[];
     }
-    let len = unsafe { strlen(p) };
-    unsafe { slice::from_raw_parts(p as *const u8, len) }
+
+    unsafe { CStr::from_ptr(p).to_bytes() }
 }
 
 unsafe fn cstr_to_str<'a>(p: *const c_char) -> Option<&'a str> {
@@ -148,6 +150,21 @@ pub unsafe extern "C" fn setenv(
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn putenv(name: *const c_char) -> c_int {
+    if name.is_null() {
+        return -1;
+    }
+    unsafe {
+        let bytes = cstr_to_bytes(name);
+        let mut splt = bytes.splitn(2, |c| *c == b'=');
+        let name = splt.next().unwrap_or(b"");
+        let value = splt.next().unwrap_or(b"");
+        env::env_set(name, value);
+        0
+    }
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn unsetenv(name: *const c_char) -> c_int {
     if name.is_null() {
         return -1;
@@ -249,14 +266,46 @@ pub extern "C" fn strtod(ptr: *const c_char, endptr: *mut *const c_char) -> f64 
     }
 
     unsafe {
-        let Some(bytes) = cstr_to_str(ptr) else {
+        let bytes = cstr_to_bytes(ptr);
+        let slice = bytes.trim_ascii();
+        let mut dotted = false;
+        let mut e = false;
+        let mut e_begin = false;
+
+        let Some(slice) = first_valid_slice(
+            &[],
+            &[b"+", b"-"],
+            |c| {
+                if c.is_ascii_digit() {
+                    true
+                } else if c == b'.' && !dotted {
+                    dotted = true;
+                    true
+                } else if (c == b'e' || c == b'E') && !e {
+                    dotted = false;
+                    e_begin = true;
+                    e = true;
+                    true
+                } else if (c == b'-' || c == b'+') && e_begin {
+                    e_begin = false;
+                    true
+                } else {
+                    false
+                }
+            },
+            slice,
+        ) else {
+            if !endptr.is_null() {
+                *endptr = ptr as *mut c_char;
+            }
             return 0.0;
         };
-        let slice = bytes.trim_ascii();
 
-        match slice.parse::<f64>() {
+        match str::from_utf8(slice)
+            .expect("Failed to validate str likely a bug")
+            .parse::<f64>()
+        {
             Ok(val) => {
-                // TODO: a bit of a stub
                 if !endptr.is_null() {
                     *endptr = slice.as_ptr().add(slice.len()).cast();
                 }
@@ -270,6 +319,137 @@ pub extern "C" fn strtod(ptr: *const c_char, endptr: *mut *const c_char) -> f64 
             }
         }
     }
+}
+
+fn first_valid_slice<'a>(
+    trim_prefix: &[&[u8]],
+    valid_prefix: &[&[u8]],
+    mut is_valid: impl FnMut(u8) -> bool,
+    str: &'a [u8],
+) -> Option<&'a [u8]> {
+    let mut str = str.trim_ascii();
+    // FIXME: Not so correct impl
+    for p in trim_prefix {
+        str = str.trim_prefix(*p);
+    }
+    let mut check_pos = 0;
+    while check_pos < str.len() {
+        // FIXME: also not so correct
+        if !is_valid(str[check_pos]) && !valid_prefix.contains(&&str[..check_pos]) {
+            break;
+        }
+        check_pos += 1;
+    }
+    (check_pos != 0).then(|| &str[..check_pos])
+}
+
+macro_rules! strtox {
+    ($x:ty, $singed:literal, $ptr:ident,$endptr:ident,$base:ident) => {{
+        if $ptr.is_null() || $base == 1 || $base > 36 {
+            return 0;
+        }
+
+        unsafe {
+            let str = cstr_to_bytes($ptr);
+            let str = str.trim_ascii();
+            if $base == 0 {
+                if str.starts_with(b"0x") || str.starts_with(b"0X") {
+                    $base = 16;
+                } else if str.starts_with(b"0") {
+                    $base = 8;
+                } else {
+                    $base = 10;
+                }
+            }
+
+            let Some(slice) = first_valid_slice(
+                &[b"0x", b"0X"],
+                &[b"-", b"+"],
+                |c| c >= b'0' && (((c - b'0') as i32) < ($base - 1)),
+                str,
+            ) else {
+                if !$endptr.is_null() {
+                    *$endptr = $ptr as *mut c_char;
+                }
+                return 0;
+            };
+
+            match <$x>::from_str_radix(
+                core::str::from_utf8(slice)
+                    .expect("Failed to validate a number string likely a bug"),
+                $base as u32,
+            ) {
+                Ok(val) => {
+                    // TODO: a bit of a stub
+                    if !$endptr.is_null() {
+                        *$endptr = str.as_ptr().add(str.len()).cast();
+                    }
+                    val
+                }
+                Err(e) => match e.kind() {
+                    IntErrorKind::PosOverflow => {
+                        if !$endptr.is_null() {
+                            *$endptr = str.as_ptr().add(str.len()).cast();
+                        }
+                        set_error(ErrorStatus::StrTooLong);
+                        <$x>::MAX
+                    }
+                    IntErrorKind::NegOverflow => {
+                        if !$endptr.is_null() {
+                            *$endptr = str.as_ptr().add(str.len()).cast();
+                        }
+                        set_error(ErrorStatus::StrTooLong);
+                        <$x>::MIN
+                    }
+                    IntErrorKind::InvalidDigit => {
+                        unreachable!("Number string validation is bugged")
+                    }
+                    _ => {
+                        if !$endptr.is_null() {
+                            *$endptr = $ptr as *mut c_char;
+                        }
+                        0
+                    }
+                },
+            }
+        }
+    }};
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn strtol(
+    ptr: *const c_char,
+    endptr: *mut *const c_char,
+    mut base: c_int,
+) -> c_long {
+    strtox!(c_long, true, ptr, endptr, base)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn strtoll(
+    ptr: *const c_char,
+    endptr: *mut *const c_char,
+    mut base: c_int,
+) -> c_longlong {
+    strtox!(c_longlong, true, ptr, endptr, base)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn strtoul(
+    ptr: *const c_char,
+    endptr: *mut *const c_char,
+    mut base: c_int,
+) -> c_ulong {
+    strtox!(c_ulong, false, ptr, endptr, base)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn strtoull(
+    ptr: *const c_char,
+    endptr: *mut *const c_char,
+    mut base: c_int,
+) -> c_ulonglong {
+    strtox!(c_ulonglong, false, ptr, endptr, base)
 }
 
 static RNG: SyncUnsafeCell<Option<Pcg32>> = SyncUnsafeCell::new(None);
