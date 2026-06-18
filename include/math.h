@@ -41,6 +41,7 @@ int ifloor(double x);
 int iceil(double x);
 
 double floor(double x);
+float floorf(float x);
 double ceil(double x);
 
 double ldexp(double x, int ex);

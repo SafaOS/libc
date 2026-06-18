@@ -9,6 +9,11 @@ pub extern "C" fn floor(x: f64) -> f64 {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn floorf(x: f32) -> f32 {
+    libm::floorf(x)
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn log(x: f64) -> f64 {
     libm::log(x)
 }
