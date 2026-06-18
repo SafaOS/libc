@@ -117,6 +117,16 @@ pub extern "C" fn freopen(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn fdopen(fildes: c_int, mode: *const c_char) -> *mut File {
+    _ = mode;
+    Box::into_raw(Box::new(File::from_res(
+        fildes as u32,
+        BufferingOption::None,
+        false,
+    )))
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn remove(path: *const c_char) -> c_int {
     let cstr_path = unsafe { CStr::from_ptr(path) };
     let path = try_errno!(cstr_path.to_str().map_err(|_| ErrorStatus::InvalidStr), -1);

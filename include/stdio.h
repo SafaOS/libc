@@ -26,6 +26,7 @@ int sscanf(const char* s, const char* fmt, ...) __attribute__((format(scanf,2,3)
 
 FILE* fopen(const char *path, const char *mode);
 FILE *freopen(const char *path, const char *mode, FILE *stream);
+FILE *fdopen(int fildes, const char *mode);
 
 int fclose(FILE *f);
 
@@ -70,6 +71,13 @@ int feof(FILE *f);
 #define _IOLBF 2
 
 int setvbuf(FILE *stream, char *buffer, int mode, size_t size);
+static int setbuf(FILE *stream, char *buffer) {
+    if (buffer)
+        return setvbuf(stream, buffer, _IOFBF, BUFSIZ);
+    else
+        return setvbuf(stream, NULL, _IONBF, 0);
+
+}
 
 FILE* tmpfile();
 char* tmpnam(char *s);
