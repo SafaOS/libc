@@ -46,3 +46,5 @@ long      strtol( const char*  str, char** str_end, int base );
 long long strtoll( const char* str, char** str_end, int base );
 unsigned long      strtoul ( const char* str, char** str_end, int base );
 unsigned long long strtoull( const char* str, char** str_end, int base );
+void *bsearch(const void *key, const void *base, size_t nmemb, size_t size,
+              int (*compar)(const void *, const void *));

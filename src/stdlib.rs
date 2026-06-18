@@ -507,3 +507,35 @@ pub extern "C" fn qsort(
             .copy_from_slice(&original[src_idx_start..src_idx_end]);
     }
 }
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn bsearch(
+    key: *const c_void,
+    base: *const c_void,
+    count: usize,
+    size: usize,
+    compare: extern "C" fn(*const c_void, *const c_void) -> c_int,
+) -> *const c_void {
+    if count == 0 || size == 0 {
+        return core::ptr::null();
+    }
+
+    let mut low = 0usize;
+    let mut high = count;
+
+    while low < high {
+        let mid = low + (high - low) / 2;
+
+        // SAFETY: mid is always in bounds [0, count), and base points to
+        // count * size valid bytes (caller's responsibility per C contract).
+        let element = unsafe { (base as *const u8).add(mid * size) as *const c_void };
+
+        match compare(key, element) {
+            0 => return element as *mut c_void,
+            n if n < 0 => high = mid,
+            _ => low = mid + 1,
+        }
+    }
+
+    core::ptr::null_mut()
+}
