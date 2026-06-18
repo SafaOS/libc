@@ -1,4 +1,5 @@
 #pragma once
+#include <limits.h>
 #include <stddef.h>
 #include "unistd.h"
 
@@ -32,7 +33,9 @@ int atoi(const char* str);
 double atof(const char* str);
 
 void srand(unsigned int seed);
+
 int rand(void);
+#define RAND_MAX INT_MAX
 
 void qsort( void* ptr, size_t count, size_t size,
             int (*comp)(const void*, const void*) );
