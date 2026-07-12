@@ -4,3 +4,4 @@ rustflags = ["-C", "force-unwind-tables"]
 [unstable]
 unstable-options = true
 build-std = ["core", "alloc"]
+build-std-features = ["compiler-builtins-mem"]

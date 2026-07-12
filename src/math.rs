@@ -52,6 +52,31 @@ pub extern "C" fn fabs(x: f64) -> f64 {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn fabsf(x: f32) -> f32 {
+    libm::fabsf(x)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn fminf(x: f32, y: f32) -> f32 {
+    libm::fminf(x, y)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn fmin(x: f64, y: f64) -> f64 {
+    libm::fmin(x, y)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn fmaxf(x: f32, y: f32) -> f32 {
+    libm::fmaxf(x, y)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn fmax(x: f64, y: f64) -> f64 {
+    libm::fmax(x, y)
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn asin(x: f64) -> f64 {
     libm::asin(x)
 }
@@ -99,6 +124,21 @@ pub extern "C" fn acosh(x: f64) -> f64 {
 #[unsafe(no_mangle)]
 pub extern "C" fn atanh(x: f64) -> f64 {
     libm::atanh(x)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn sinf(x: f32) -> f32 {
+    libm::sinf(x)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn cosf(x: f32) -> f32 {
+    libm::cosf(x)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn tanf(x: f32) -> f32 {
+    libm::tanf(x)
 }
 
 #[unsafe(no_mangle)]

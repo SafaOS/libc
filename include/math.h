@@ -51,6 +51,7 @@ double pow(double x, double y);
 double sqrt(double x);
 float sqrtf(float x);
 double fabs(double x);
+float fabsf(float x);
 double log(double x);
 
 double asin(double x);
@@ -70,6 +71,15 @@ double sin(double x);
 double cos(double x);
 double tan(double tan);
 
+float sinf(double x);
+float cosf(double x);
+float tanf(double tan);
 
 double fmod(double x, double y);
 float fmodf(float x, float y);
+
+double fmax(double x, double y);
+double fmin(double x, double y);
+
+float fmaxf(float x, float y);
+float fminf(float x, float y);
