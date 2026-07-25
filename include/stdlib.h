@@ -1,15 +1,16 @@
 #pragma once
 #include <limits.h>
 #include <stddef.h>
-#include "unistd.h"
 
 int abs(int num);
+unsigned long long int llabs(long long int x);
 
 int system(const char* command);
 void exit(int code) __attribute__ ((noreturn));
 void abort() __attribute__ ((noreturn));
 
 static inline void _Exit(int code)  {
+    int _exit(int code);
    _exit(code);
 }
 

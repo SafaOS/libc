@@ -38,6 +38,11 @@ pub extern "C" fn abs(x: i32) -> u32 {
     x.unsigned_abs()
 }
 
+#[unsafe(no_mangle)]
+pub extern "C" fn llabs(x: c_longlong) -> c_ulonglong {
+    x.unsigned_abs()
+}
+
 const ALIGNMENT: usize = align_of::<usize>() * 2;
 
 #[unsafe(no_mangle)]
@@ -98,11 +103,14 @@ pub extern "C" fn realloc(ptr: *mut c_void, new_size: usize) -> *mut c_void {
     }
 
     unsafe {
-        let newp = malloc(new_size);
-        core::ptr::copy(ptr, newp, new_size);
-        free(ptr);
-
-        newp
+        match api_alloc::GLOBAL_SYSTEM_ALLOCATOR.reallocate(
+            NonNull::new_unchecked(ptr.cast()),
+            new_size,
+            ALIGNMENT,
+        ) {
+            Some(p) => p.as_ptr().cast(),
+            None => core::ptr::null_mut(),
+        }
     }
 }
 
