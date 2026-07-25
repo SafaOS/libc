@@ -8,6 +8,9 @@ struct stat {
     time_t st_atime;
     time_t st_mtime;
     time_t st_ctime;
+
+    int st_uid;
+    int st_gid;
 };
 
 
@@ -35,6 +38,7 @@ struct stat {
 #define S_IFCHR  0020000 // Device file (TODO: block devices)
 
 #define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
+#define S_ISCHR(m) (((m) & S_IFMT) == S_IFCHR)
 
 
 int stat(const char * path,
@@ -45,3 +49,5 @@ static int lstat(const char *path,
              // TODO: symlink stat
              return stat(path, statbuf);
 }
+
+int fstat(int fildes, struct stat *buf);
