@@ -157,9 +157,12 @@ pub extern "C" fn strstr(haystack: *const u8, needle: *const u8) -> *const u8 {
         }
 
         let nlen = strlen(needle as *const c_char);
-
         if nlen == 0 {
             return haystack;
+        }
+
+        if nlen > hlen {
+            return core::ptr::null();
         }
 
         let h = slice::from_raw_parts(haystack, hlen);
