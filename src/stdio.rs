@@ -44,7 +44,7 @@ pub static stderr: StdIo = StdIo(SyncUnsafeCell::new(null_mut()));
 // File management
 // ==========================
 
-fn fopen_inner(filename: *const c_char, mode: *const c_char) -> Option<File> {
+pub fn fopen_inner(filename: *const c_char, mode: *const c_char) -> Option<File> {
     let cstr_path = unsafe { CStr::from_ptr(filename) };
     let cstr_mode = unsafe { CStr::from_ptr(mode) };
 

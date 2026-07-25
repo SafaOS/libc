@@ -20,6 +20,7 @@ pub mod stdlib;
 pub mod string;
 pub mod strings;
 pub mod time;
+pub mod unix_fd;
 
 pub extern crate alloc;
 
