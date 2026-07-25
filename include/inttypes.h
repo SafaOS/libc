@@ -1,6 +1,10 @@
 #pragma once
 #include <stdint.h>
 
+
+#define __PRI64_PREFIX	"l"
+#define __PRIPTR_PREFIX	"l"
+
 /* fprintf macros for signed integers */
 #define	PRId8			"d"		/* int8_t */
 #define	PRId16			"d"		/* int16_t */
@@ -110,3 +114,78 @@
 
 #define	PRIXMAX			"jX"		/* uintmax_t */
 #define	PRIXPTR			"lX"		/* uintptr_t */
+
+#define SCNd8		"hhd"
+#define SCNd16		"hd"
+#define SCNd32		"d"
+#define SCNd64		__PRI64_PREFIX "d"
+#define SCNdLEAST8	"hhd"
+#define SCNdLEAST16	"hd"
+#define SCNdLEAST32	"d"
+#define SCNdLEAST64	__PRI64_PREFIX "d"
+#define SCNdFAST8	"hhd"
+#define SCNdFAST16	__PRIPTR_PREFIX "d"
+#define SCNdFAST32	__PRIPTR_PREFIX "d"
+#define SCNdFAST64	__PRI64_PREFIX "d"
+#define SCNdMAX		__PRI64_PREFIX "d"
+#define SCNdPTR		__PRIPTR_PREFIX "d"
+
+#define SCNi8		"hhi"
+#define SCNi16		"hi"
+#define SCNi32		"i"
+#define SCNi64		__PRI64_PREFIX "i"
+#define SCNiLEAST8	"hhi"
+#define SCNiLEAST16	"hi"
+#define SCNiLEAST32	"i"
+#define SCNiLEAST64	__PRI64_PREFIX "i"
+#define SCNiFAST8	"hhi"
+#define SCNiFAST16	__PRIPTR_PREFIX "i"
+#define SCNiFAST32	__PRIPTR_PREFIX "i"
+#define SCNiFAST64	__PRI64_PREFIX "i"
+#define SCNiMAX		__PRI64_PREFIX "i"
+#define SCNiPTR		__PRIPTR_PREFIX "i"
+
+#define SCNo8		"hho"
+#define SCNo16		"ho"
+#define SCNo32		"o"
+#define SCNo64		__PRI64_PREFIX "o"
+#define SCNoLEAST8	"hho"
+#define SCNoLEAST16	"ho"
+#define SCNoLEAST32	"o"
+#define SCNoLEAST64	__PRI64_PREFIX "o"
+#define SCNoFAST8	"hho"
+#define SCNoFAST16	__PRIPTR_PREFIX "o"
+#define SCNoFAST32	__PRIPTR_PREFIX "o"
+#define SCNoFAST64	__PRI64_PREFIX "o"
+#define SCNoMAX		__PRI64_PREFIX "o"
+#define SCNoPTR		__PRIPTR_PREFIX "o"
+
+#define SCNu8		"hhu"
+#define SCNu16		"hu"
+#define SCNu32		"u"
+#define SCNu64		__PRI64_PREFIX "u"
+#define SCNuLEAST8	"hhu"
+#define SCNuLEAST16	"hu"
+#define SCNuLEAST32	"u"
+#define SCNuLEAST64	__PRI64_PREFIX "u"
+#define SCNuFAST8	"hhu"
+#define SCNuFAST16	__PRIPTR_PREFIX "u"
+#define SCNuFAST32	__PRIPTR_PREFIX "u"
+#define SCNuFAST64	__PRI64_PREFIX "u"
+#define SCNuMAX		__PRI64_PREFIX "u"
+#define SCNuPTR		__PRIPTR_PREFIX "u"
+
+#define SCNx8		"hhx"
+#define SCNx16		"hx"
+#define SCNx32		"x"
+#define SCNx64		__PRI64_PREFIX "x"
+#define SCNxLEAST8	"hhx"
+#define SCNxLEAST16	"hx"
+#define SCNxLEAST32	"x"
+#define SCNxLEAST64	__PRI64_PREFIX "x"
+#define SCNxFAST8	"hhx"
+#define SCNxFAST16	__PRIPTR_PREFIX "x"
+#define SCNxFAST32	__PRIPTR_PREFIX "x"
+#define SCNxFAST64	__PRI64_PREFIX "x"
+#define SCNxMAX		__PRI64_PREFIX "x"
+#define SCNxPTR		__PRIPTR_PREFIX "x"

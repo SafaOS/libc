@@ -1,4 +1,7 @@
 #pragma once
+
+
+#define fpclassify(x)        __builtin_fpclassify(FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL, FP_ZERO, x)
 #define isfinite(x)          __builtin_isfinite(x)
 #define isgreater(x, y)      __builtin_isgreater(x, y)
 #define isgreaterequal(x, y) __builtin_isgreaterequal(x, y)
@@ -33,26 +36,49 @@
 #define INFINITY  __builtin_inff()
 #define NAN       __builtin_nanf("")
 
+#define FP_INFINITE  0
+#define FP_NAN       1
+#define FP_NORMAL    2
+#define FP_SUBNORMAL 3
+#define FP_ZERO      4
+
 #define FP_ILOGB0   -2147483647
 #define FP_ILOGBNAN +2147483647
 
 
 int ifloor(double x);
 int iceil(double x);
+int iceilf(float x);
 
 double floor(double x);
 float floorf(float x);
 double ceil(double x);
 
+float ceilf(float x);
+
 double ldexp(double x, int ex);
 double frexp(double x, int *ex);
+double exp(double x);
+float  expf(float x);
 
 double pow(double x, double y);
+float  powf(float x, float y);
 double sqrt(double x);
 float sqrtf(float x);
 double fabs(double x);
 float fabsf(float x);
+
 double log(double x);
+float  logf(float x);
+
+
+double log10(double x);
+float  log10f(float x);
+
+float asinf(float x);
+float acosf(float x);
+float atanf(float x);
+float atan2f(float y, float x);
 
 double asin(double x);
 double acos(double x);
@@ -67,6 +93,14 @@ double asinh(double x);
 double acosh(double x);
 double atanh(double x);
 
+float sinhf(float x);
+float coshf(float x);
+float tanhf(float x);
+
+float asinhf(float x);
+float acoshf(float x);
+float atanhf(float x);
+
 double sin(double x);
 double cos(double x);
 double tan(double tan);
@@ -78,8 +112,38 @@ float tanf(double tan);
 double fmod(double x, double y);
 float fmodf(float x, float y);
 
+double modf(double, double*);
+float modff(float, float*);
+
 double fmax(double x, double y);
 double fmin(double x, double y);
 
 float fmaxf(float x, float y);
 float fminf(float x, float y);
+
+float hypotf(float, float);
+float erff(float);
+float copysignf(float, float);
+
+double hypot(double, double);
+double erf(double);
+double copysign(double, double);
+
+double j0(double x);
+double j1(double x);
+double jn(int n, double x);
+
+float j0f(float x);
+float j1f(float x);
+float jnf(int n, float x);
+
+long double j0l(long double x);
+long double j1l(long double x);
+long double jnl(int n, long double x);
+
+double      scalbn( double arg, int exp );
+float       scalbnf( float arg, int exp );
+
+
+long lrintf ( float num );
+long lrint ( double num );
