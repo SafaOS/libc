@@ -2,6 +2,7 @@
 #![feature(c_variadic)]
 #![feature(thread_local)]
 #![feature(trim_prefix_suffix)]
+#![feature(core_float_math)]
 
 pub mod dirent;
 pub mod errno;
