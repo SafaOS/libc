@@ -65,7 +65,7 @@ struct CPrinter<'a, 'fmt, 'b, 'f, W: CWriter> {
 impl<'a, 'fmt, 'b, 'f, T: CWriter> CWriter for CPrinter<'a, 'fmt, 'b, 'f, T> {
     fn write_bytes(&mut self, bytes: &[u8]) -> Result<usize, ErrorStatus> {
         let am = self.writer.write_bytes(bytes)?;
-        self.wrote += am;
+        self.wrote += bytes.len();
         Ok(am)
     }
 }
@@ -101,27 +101,44 @@ enum Kind {
     Octal,
     Hex,
     BigHex,
+    Binary,
     Normal,
 }
 
+macro_rules! match_arg_inner {
+    ($self:ident, $arg: expr, $precision: expr, $width: expr, $fmt_spec:expr, $fmt_spec_width:expr, $fmt_spec_prec:expr, $fmt_spec_width_prec:expr) => {
+        match ($precision, $width) {
+            (None, None) => {
+                write!($self, $fmt_spec, $arg)?;
+            }
+            (Some(prec), None) => {
+                write!($self, $fmt_spec_prec, $arg, prec = prec)?;
+            }
+            (None, Some(width)) => {
+                write!($self, $fmt_spec_width, $arg, width = width)?;
+            }
+            (Some(prec), Some(width)) => {
+                write!(
+                    $self,
+                    $fmt_spec_width_prec,
+                    $arg,
+                    width = width,
+                    prec = prec
+                )?;
+            }
+        }
+    };
+}
 macro_rules! match_arg {
-    ($self:ident, $e: expr, { $($matched_e:pat => ($t0:ty, $t1:ty) $(as ($as0:ty, $as1:ty))?,)* }, $unsigned: expr, $precision: expr, $fmt_spec_no_prec:expr, $fmt_spec_prec:expr) => {
+    ($self:ident, $e: expr, { $($matched_e:pat => ($t0:ty, $t1:ty) $(as ($as0:ty, $as1:ty))?,)* }, $unsigned: expr, $precision: expr, $width: expr, $fmt_spec:expr, $fmt_spec_width:expr, $fmt_spec_prec:expr, $fmt_spec_width_prec:expr) => {
         match $e {
             $($matched_e => {
                 if !$unsigned {
                     let arg = unsafe { $self.arg::<$t0>() $(as $as0)? };
-                    if let Some(prec) = $precision {
-                    write!($self, $fmt_spec_prec, arg, prec = prec)?;
-                    } else {
-                        write!($self, $fmt_spec_no_prec, arg)?;
-                    }
+                    match_arg_inner!($self, arg, $precision, $width, $fmt_spec, $fmt_spec_width, $fmt_spec_prec, $fmt_spec_width_prec)
                 } else {
                     let arg = unsafe { $self.arg::<$t1>() $(as $as1)? };
-                    if let Some(prec) = $precision {
-                        write!($self, $fmt_spec_prec, arg, prec = prec)?;
-                    } else {
-                        write!($self, $fmt_spec_no_prec, arg)?;
-                    }
+                    match_arg_inner!($self, arg, $precision, $width, $fmt_spec, $fmt_spec_width, $fmt_spec_prec, $fmt_spec_width_prec)
                 }
             }),*
         }
@@ -162,11 +179,12 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
         &mut self,
         unsigned: bool,
         precision: Option<usize>,
+        width: Option<usize>,
         length: LengthModifier,
         prefer_sci: bool,
     ) -> core::fmt::Result {
         macro_rules! call_with {
-            ($fmt_no_prec:literal, $fmt_prec:literal) => {
+            ($fmt:literal, $fmt_width:literal, $fmt_prec:literal, $fmt_width_prec:literal) => {
                 match_arg!(
                     self,
                     length,
@@ -183,17 +201,20 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
                     },
                     unsigned,
                     precision,
-                    $fmt_no_prec,
-                    $fmt_prec
+                    width,
+                    $fmt,
+                    $fmt_width,
+                    $fmt_prec,
+                    $fmt_width_prec
                 )
             };
         }
 
         // TODO: rust doesn't have an equalivent of %g or %a
         if prefer_sci {
-            call_with!("{:e}", "{:0prec$}")
+            call_with!("{:e}", "{:0width$e}", "{:.prec$e}", "{:0width$.prec$e}")
         } else {
-            call_with!("{}", "{:0prec$}")
+            call_with!("{}", "{:0width$}", "{:.prec$}", "{:0width$.prec$}")
         }
         Ok(())
     }
@@ -203,6 +224,7 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
         unsigned: bool,
         kind: Kind,
         precision: Option<usize>,
+        width: Option<usize>,
         length: LengthModifier,
     ) -> core::fmt::Result {
         if length == LengthModifier::LongDouble {
@@ -216,7 +238,7 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
         }
 
         macro_rules! call_with {
-            ($fmt_no_prec:literal, $fmt_prec:literal) => {
+            ($fmt:literal, $fmt_width:literal, $fmt_prec:literal, $fmt_prec_width:literal) => {
                 match_arg!(
                     self,
                     length,
@@ -233,19 +255,49 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
                     },
                     unsigned,
                     precision,
-                    $fmt_no_prec,
-                    $fmt_prec
+                    width,
+                    $fmt,
+                    $fmt_width,
+                    $fmt_prec,
+                    $fmt_prec_width
                 )
             };
         }
 
         match kind {
-            Kind::Normal => call_with!("{}", "{:0prec$}"),
-            Kind::Octal => call_with!("{:o}", "{:0prec$o}"),
-            Kind::Hex => call_with!("{:x}", "{:0prec$x}"),
-            Kind::BigHex => call_with!("{:X}", "{:0prec$X}"),
+            Kind::Normal => call_with!("{}", "{:0width$}", "{:.prec$}", "{:0width$.prec$}"),
+            Kind::Octal => call_with!("{:o}", "{:0width$o}", "{:.prec$o}", "{:0width$.prec$o}"),
+            Kind::Hex => call_with!("{:x}", "{:0width$x}", "{:.prec$x}", "{:0width$.prec$x}"),
+            Kind::BigHex => call_with!("{:X}", "{:0width$X}", "{:.prec$X}", "{:0width$.prec$X}"),
+            Kind::Binary => call_with!("{:b}", "{:0width$b}", "{:.prec$b}", "{:0width$.prec$b}"),
         };
         Ok(())
+    }
+
+    fn try_make_width(&mut self) -> Option<usize> {
+        let Some(maybe_width) = self.peek() else {
+            return None;
+        };
+
+        match maybe_width {
+            b'*' => {
+                self.next();
+                let width = unsafe { self.arg::<c_uint>() as usize };
+                Some(width)
+            }
+            c @ b'0'..b'9' => {
+                self.next();
+                let mut width = (c - b'0') as usize;
+
+                while let Some(c @ b'0'..b'9') = self.peek() {
+                    self.next();
+                    width = (width * 10) + (c - b'0') as usize;
+                }
+
+                Some(width)
+            }
+            _ => None,
+        }
     }
 
     fn try_make_length(&mut self) -> Option<LengthModifier> {
@@ -296,6 +348,7 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
     fn write_next_fmt(
         &mut self,
         length: Option<LengthModifier>,
+        width: Option<usize>,
         precision: Option<usize>,
     ) -> core::fmt::Result {
         let Some(spec) = self.next() else {
@@ -311,17 +364,20 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
             b'd' | b'i' => self.next_int(
                 false,
                 Kind::Normal,
+                width,
                 precision,
                 length.unwrap_or(LengthModifier::None),
             ),
             b'a' | b'A' | b'f' => self.next_float(
                 false,
+                width,
                 precision,
                 length.unwrap_or(LengthModifier::None),
                 false,
             ),
             b'g' | b'G' | b'e' | b'E' => self.next_float(
                 false,
+                width,
                 precision,
                 length.unwrap_or(LengthModifier::None),
                 true,
@@ -329,35 +385,49 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
             b'u' => self.next_int(
                 true,
                 Kind::Normal,
+                width,
                 precision,
                 length.unwrap_or(LengthModifier::None),
             ),
             b'o' => self.next_int(
                 true,
                 Kind::Octal,
+                width,
                 precision,
                 length.unwrap_or(LengthModifier::None),
             ),
             b'x' => self.next_int(
                 true,
                 Kind::Hex,
+                width,
                 precision,
                 length.unwrap_or(LengthModifier::None),
             ),
-            b'p' => {
-                let ptr = unsafe { self.arg::<*const ()>() };
-                write!(self, "{ptr:?}")
-            }
+            b'b' => self.next_int(
+                true,
+                Kind::Binary,
+                width,
+                precision,
+                length.unwrap_or(LengthModifier::None),
+            ),
+            b'p' => self.next_int(
+                false,
+                Kind::Hex,
+                width,
+                precision,
+                length.unwrap_or(LengthModifier::None),
+            ),
             b'X' => self.next_int(
                 true,
                 Kind::BigHex,
+                width,
                 precision,
                 length.unwrap_or(LengthModifier::None),
             ),
             b's' => {
                 let ptr = unsafe { self.arg::<*const c_char>() };
                 let len = if let Some(prec) = precision {
-                    prec
+                    prec.min(unsafe { strlen(ptr as *const _) })
                 } else {
                     unsafe { strlen(ptr as *const _) }
                 };
@@ -368,7 +438,7 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
             }
             b => {
                 if let Some(length) = length {
-                    self.next_int(false, Kind::Normal, precision, length)?;
+                    self.next_int(false, Kind::Normal, width, precision, length)?;
                     try_fmt!(self.write_byte(b));
                 }
 
@@ -380,6 +450,7 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
     fn write_all(mut self) -> Result<usize, core::fmt::Error> {
         while let Some(byte) = self.next() {
             if byte == b'%' {
+                let width = self.try_make_width();
                 let Some(maybe_spec) = self.peek() else {
                     break;
                 };
@@ -391,22 +462,14 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
                     }
                     b'.' => {
                         _ = self.next();
-                        let Some(maybe_precision) = self.next() else {
-                            break;
-                        };
-
-                        let precision = match maybe_precision {
-                            b'*' => unsafe { self.arg::<c_uint>() as usize },
-                            p @ b'0'..b'9' => (p - b'0') as usize,
-                            _ => continue,
-                        };
+                        let precision = self.try_make_width().unwrap_or(0);
 
                         let length = self.try_make_length();
-                        self.write_next_fmt(length, Some(precision))?;
+                        self.write_next_fmt(length, width, Some(precision))?;
                     }
                     _ => {
                         let length = self.try_make_length();
-                        self.write_next_fmt(length, None)?;
+                        self.write_next_fmt(length, width, None)?;
                     }
                 }
             } else {
