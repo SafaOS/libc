@@ -1,6 +1,8 @@
 use core::ffi::{CStr, c_char, c_int, c_long};
 
-use crate::errno::set_error;
+use safa_api::{abi::clock::Clock, errors::ErrorStatus, syscalls::clock};
+
+use crate::{errno::set_error, try_errno};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -22,19 +24,17 @@ type TimeT = u64;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn time(t: *mut TimeT) -> TimeT {
-    // TODO: implement actual time
-    let uptime = safa_api::syscalls::misc::uptime() / 1000;
+    let time = clock::clock_gettime(Clock::RTC).as_secs();
     if t.is_null() {
-        return uptime;
+        return time;
     }
-    unsafe { *t = uptime };
-    uptime
+    unsafe { *t = time };
+    time
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn clock() -> TimeT {
-    // TODO: implement actual clock
-    safa_api::syscalls::misc::uptime()
+    clock::clock_gettime(Clock::RTC).as_millis() as TimeT
 }
 
 #[unsafe(no_mangle)]
@@ -53,16 +53,31 @@ pub extern "C" fn mktime(tm: *const TM) -> TimeT {
 #[derive(Debug, Clone, Copy)]
 pub struct TimeVal {
     pub tv_sec: TimeT,
-    pub tv_usec: u32,
+    pub tv_usec: c_long,
+}
+
+impl TimeVal {
+    pub const fn from_duration(dur: core::time::Duration) -> Self {
+        Self {
+            tv_sec: dur.as_secs(),
+            tv_usec: dur.subsec_micros() as c_long,
+        }
+    }
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct TimeSpec {
     pub tv_sec: TimeT,
-    pub tv_nsec: u32,
+    pub tv_nsec: c_long,
 }
 impl TimeSpec {
+    pub const fn from_duration(dur: core::time::Duration) -> Self {
+        TimeSpec {
+            tv_sec: dur.as_secs(),
+            tv_nsec: dur.subsec_nanos() as c_long,
+        }
+    }
     pub fn to_duration(&self) -> core::time::Duration {
         core::time::Duration::new(self.tv_sec as u64, self.tv_nsec as u32)
     }
@@ -72,17 +87,14 @@ pub struct TimeZone;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn gettimeofday(tv: *mut TimeVal, tz: *mut TimeZone) -> c_int {
-    let uptime = safa_api::syscalls::misc::uptime();
+    let time = safa_api::syscalls::clock::clock_gettime(safa_api::abi::clock::Clock::RTC);
     if tv.is_null() {
-        set_error(safa_api::errors::ErrorStatus::MMapError);
+        set_error(safa_api::errors::ErrorStatus::InvalidArgument);
         return -1;
     }
 
     unsafe {
-        *tv = TimeVal {
-            tv_sec: uptime / 1000,
-            tv_usec: ((uptime * 1000) % 1000) as u32,
-        }
+        *tv = TimeVal::from_duration(time);
     };
 
     if !tz.is_null() {
@@ -173,4 +185,82 @@ pub extern "C" fn strftime(
     s[len] = 0;
 
     len
+}
+
+type ClockId = c_int;
+
+const CLOCK_REALTIME: ClockId = 0;
+const CLOCK_MONOTONIC: ClockId = 1;
+
+#[unsafe(no_mangle)]
+pub extern "C" fn clock_gettime(clockid: ClockId, tp: *mut TimeSpec) -> c_int {
+    if tp.is_null() {
+        set_error(ErrorStatus::InvalidArgument);
+        return -1;
+    }
+
+    let clock = match clockid {
+        CLOCK_REALTIME => Clock::RTC,
+        CLOCK_MONOTONIC => Clock::Monotonic,
+        _ => {
+            set_error(ErrorStatus::InvalidArgument);
+            return -1;
+        }
+    };
+
+    let time = clock::clock_gettime(clock);
+
+    unsafe {
+        *tp = TimeSpec::from_duration(time);
+    };
+
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn clock_getres(clockid: ClockId, tp: *mut TimeSpec) -> c_int {
+    if tp.is_null() {
+        set_error(ErrorStatus::InvalidArgument);
+        return -1;
+    }
+
+    let clock = match clockid {
+        CLOCK_REALTIME => Clock::RTC,
+        CLOCK_MONOTONIC => Clock::Monotonic,
+        _ => {
+            set_error(ErrorStatus::InvalidArgument);
+            return -1;
+        }
+    };
+
+    let time = clock::clock_getres(clock);
+
+    unsafe {
+        *tp = TimeSpec::from_duration(time);
+    };
+
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn clock_settime(clockid: ClockId, tp: *const TimeSpec) -> c_int {
+    if tp.is_null() {
+        set_error(ErrorStatus::InvalidArgument);
+        return -1;
+    }
+
+    let clock = match clockid {
+        CLOCK_REALTIME => Clock::RTC,
+        CLOCK_MONOTONIC => Clock::Monotonic,
+        _ => {
+            set_error(ErrorStatus::InvalidArgument);
+            return -1;
+        }
+    };
+
+    try_errno!(
+        clock::clock_settime(clock, unsafe { (*tp).to_duration() }),
+        -1
+    );
+    0
 }

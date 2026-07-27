@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "stdlib.h"
-#include <sys/types.h>
+#include "sys/types.h"
 
 #define CLOCKS_PER_SEC 1000
 
@@ -22,7 +22,7 @@ struct tm {
 
 
 struct timespec {
-    long tv_sec;
+    time_t tv_sec;
     long tv_nsec;
 };
 
@@ -49,3 +49,13 @@ static inline struct tm *gmtime(time_t *time) {
 
 
 size_t strftime(char *s, size_t max, const char *format, struct tm *time);
+
+
+
+typedef int clockid_t;
+#define CLOCK_REALTIME  0
+#define CLOCK_MONOTONIC 1
+
+int clock_getres(clockid_t clk_id, struct timespec *res);
+int clock_gettime(clockid_t clk_id, struct timespec *tp);
+int clock_settime(clockid_t clk_id, const struct timespec *tp);

@@ -1,6 +1,7 @@
 #pragma once
+#include "types.h"
 struct timeval {
-    long tv_sec;
+    time_t tv_sec;
     long tv_usec;
 };
 

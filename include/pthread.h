@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <time.h>
+#include "time.h"
 
 typedef uint32_t pthread_t;
 typedef struct {
@@ -41,6 +41,7 @@ int pthread_mutex_unlock(pthread_mutex_t *mutex);
 
 typedef int pthread_cond_t;
 typedef int pthread_condattr_t;
+typedef int pthread_once_t;
 
 #define PTHREAD_COND_INITIALIZER  0
 
@@ -53,3 +54,6 @@ int pthread_cond_destroy(pthread_cond_t *cond);
 
 int pthread_condattr_init(pthread_condattr_t *attr);
 int pthread_condattr_destroy(pthread_condattr_t *attr);
+
+#define PTHREAD_ONCE_INIT 3
+int pthread_once(pthread_once_t *once_control, void (*routine)(void));
