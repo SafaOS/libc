@@ -44,7 +44,7 @@ checksum = "6b1e7f9a428571be2dc5bc0505c13fb6bf936822b894ec87abf8a08a4e51742d"
 [[package]]
 name = "safa-abi"
 version = "0.6.0"
-source = "git+https://github.com/SafaOS/safa-abi#ebc673e03122494f0ee50cc1810a7f80c9a58c78"
+source = "git+https://github.com/SafaOS/safa-abi#1d2f0360aa3f6e975f58380d8e8e0afa6a5b73b5"
 
 [[package]]
 name = "safa-api"
