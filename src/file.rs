@@ -2,7 +2,7 @@ use core::{fmt::Write, mem::MaybeUninit};
 
 use alloc::{boxed::Box, format, vec::Vec};
 use safa_api::{
-    abi::fs::{FSObjectType, OpenOptions},
+    abi::fs::{FSObjectType, OpenOptions, SeekWrench},
     errors::ErrorStatus,
     syscalls::{self, fs, io, resources, types::Ri},
 };
@@ -74,6 +74,16 @@ pub enum SeekPosition {
     Current(isize),
     End(usize),
     Start(usize),
+}
+
+impl Into<safa_api::abi::fs::SeekWrench> for SeekPosition {
+    fn into(self) -> SeekWrench {
+        match self {
+            SeekPosition::Current(v) => SeekWrench::Current(v),
+            SeekPosition::End(v) => SeekWrench::End(v),
+            SeekPosition::Start(v) => SeekWrench::Start(v),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]

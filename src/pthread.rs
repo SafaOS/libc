@@ -212,7 +212,11 @@ pub extern "C" fn pthread_mutex_init(mutex: *mut PThreadMutex, attr: *const ()) 
 
 #[unsafe(no_mangle)]
 pub extern "C" fn pthread_mutex_destroy(mutex: *mut PThreadMutex) -> c_int {
-    _ = mutex;
+    unsafe {
+        if !(*mutex).try_lock() {
+            return ErrorStatus::Busy as c_int;
+        }
+    }
     0
 }
 
@@ -231,6 +235,7 @@ pub extern "C" fn pthread_mutex_trylock(mutex: *const PThreadMutex) -> c_int {
 #[unsafe(no_mangle)]
 pub extern "C" fn pthread_mutex_lock(mutex: *const PThreadMutex) -> c_int {
     unsafe { (*mutex).lock() };
+
     0
 }
 
@@ -278,10 +283,10 @@ pub extern "C" fn pthread_cond_destroy(condvar: *mut PCondvar) -> c_int {
 #[unsafe(no_mangle)]
 pub extern "C" fn pthread_cond_timedwait(
     condvar: *mut PCondvar,
-    mutex: *const PThreadMutex,
+    mutex_p: *const PThreadMutex,
     wake_time: *const TimeSpec,
 ) -> c_int {
-    let mutex = unsafe { &*mutex };
+    let mutex = unsafe { &*mutex_p };
     let condvar = unsafe { &mut *condvar };
     let timeout = if wake_time.is_null() {
         None
