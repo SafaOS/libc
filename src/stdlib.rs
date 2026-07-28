@@ -34,13 +34,13 @@ unsafe fn cstr_to_str<'a>(p: *const c_char) -> Option<&'a str> {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn abs(x: i32) -> u32 {
-    x.unsigned_abs()
+pub extern "C" fn abs(x: c_int) -> c_int {
+    x.abs()
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn llabs(x: c_longlong) -> c_ulonglong {
-    x.unsigned_abs()
+pub extern "C" fn llabs(x: c_longlong) -> c_longlong {
+    x.abs()
 }
 
 const ALIGNMENT: usize = align_of::<usize>() * 2;

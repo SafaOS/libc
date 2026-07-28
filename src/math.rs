@@ -342,21 +342,6 @@ pub extern "C" fn jnf(n: i32, x: f32) -> f32 {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn j0l(x: f64) -> f64 {
-    libm::j0(x)
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn j1l(x: f64) -> f64 {
-    libm::j1(x)
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn jnl(n: i32, x: f64) -> f64 {
-    libm::jn(n, x)
-}
-
-#[unsafe(no_mangle)]
 pub extern "C" fn scalbn(arg: f64, exp: i32) -> f64 {
     libm::scalbn(arg, exp)
 }
@@ -368,10 +353,10 @@ pub extern "C" fn scalbnf(arg: f32, exp: i32) -> f32 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn lrintf(num: f32) -> i64 {
-    core::f32::math::round(num) as i64
+    core::f32::math::round_ties_even(num) as i64
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn lrint(num: f64) -> i64 {
-    core::f64::math::round(num) as i64
+    core::f64::math::round_ties_even(num) as i64
 }

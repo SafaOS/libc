@@ -105,9 +105,9 @@ double sin(double x);
 double cos(double x);
 double tan(double tan);
 
-float sinf(double x);
-float cosf(double x);
-float tanf(double tan);
+float sinf(float x);
+float cosf(float x);
+float tanf(float tan);
 
 double fmod(double x, double y);
 float fmodf(float x, float y);
@@ -137,9 +137,6 @@ float j0f(float x);
 float j1f(float x);
 float jnf(int n, float x);
 
-long double j0l(long double x);
-long double j1l(long double x);
-long double jnl(int n, long double x);
 
 double      scalbn( double arg, int exp );
 float       scalbnf( float arg, int exp );
