@@ -47,10 +47,6 @@ const ALIGNMENT: usize = align_of::<usize>() * 2;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn malloc(size: usize) -> *mut c_void {
-    if size == 0 {
-        return ptr::null_mut();
-    }
-
     match api_alloc::GLOBAL_SYSTEM_ALLOCATOR.allocate(size, ALIGNMENT) {
         Some(nonnull_slice) => nonnull_slice.as_ptr() as *mut c_void,
         None => ptr::null_mut(),
@@ -68,26 +64,20 @@ pub extern "C" fn free(ptr: *mut c_void) {
 #[unsafe(no_mangle)]
 pub extern "C" fn calloc(nmemb: usize, size: usize) -> *mut c_void {
     match nmemb.checked_mul(size) {
-        Some(total) => {
-            if total == 0 {
-                return ptr::null_mut();
-            }
+        Some(total) => unsafe {
+            use core::alloc::{GlobalAlloc, Layout};
+            let layout = match Layout::from_size_align(total, ALIGNMENT) {
+                Ok(l) => l,
+                Err(_) => return ptr::null_mut(),
+            };
 
-            unsafe {
-                use core::alloc::{GlobalAlloc, Layout};
-                let layout = match Layout::from_size_align(total, ALIGNMENT) {
-                    Ok(l) => l,
-                    Err(_) => return ptr::null_mut(),
-                };
-
-                let p = api_alloc::GLOBAL_SYSTEM_ALLOCATOR.alloc_zeroed(layout);
-                if p.is_null() {
-                    ptr::null_mut()
-                } else {
-                    p as *mut c_void
-                }
+            let p = api_alloc::GLOBAL_SYSTEM_ALLOCATOR.alloc_zeroed(layout);
+            if p.is_null() {
+                ptr::null_mut()
+            } else {
+                p as *mut c_void
             }
-        }
+        },
         None => ptr::null_mut(),
     }
 }
@@ -96,10 +86,6 @@ pub extern "C" fn calloc(nmemb: usize, size: usize) -> *mut c_void {
 pub extern "C" fn realloc(ptr: *mut c_void, new_size: usize) -> *mut c_void {
     if ptr.is_null() {
         return malloc(new_size);
-    }
-    if new_size == 0 {
-        free(ptr);
-        return ptr::null_mut();
     }
 
     unsafe {
