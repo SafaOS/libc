@@ -274,25 +274,39 @@ impl File {
                 } else {
                     let amount = buf.len().min(line.len());
                     buf[..amount].copy_from_slice(&line[..amount]);
+
+                    line.drain(..amount);
                     return Ok(amount);
                 }
             }
             BufferedIO::SizeBuffered {
                 stdin, stdin_pos, ..
             } => {
-                if *stdin_pos != 0 {
-                    let amount = buf.len().min(*stdin_pos);
-                    buf[..amount].copy_from_slice(&stdin[..amount]);
-                    Ok(amount)
-                } else {
-                    let unfilled = &mut stdin[*stdin_pos..];
-                    let am = self.inner.read_unbuffered(unfilled)?;
-                    if am == 0 {
-                        return Ok(0);
-                    }
+                let mut total = 0;
+                while total < buf.len() {
+                    if *stdin_pos != 0 {
+                        let amount = (buf.len() - total).min(*stdin_pos);
 
-                    return self.read(buf);
+                        buf[total..total + amount].copy_from_slice(&stdin[..amount]);
+                        stdin.copy_within(amount..*stdin_pos, 0);
+
+                        *stdin_pos -= amount;
+                        total += amount;
+                    } else {
+                        match self.inner.read_unbuffered(stdin) {
+                            Err(e) if total == 0 => {
+                                return Err(e);
+                            }
+                            Err(_) | Ok(0) => {
+                                break;
+                            }
+                            Ok(am) => {
+                                *stdin_pos = am;
+                            }
+                        }
+                    }
                 }
+                Ok(total)
             }
         }
     }
