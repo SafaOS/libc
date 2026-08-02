@@ -1,7 +1,7 @@
 #pragma once
 
 struct dirent {
-    char d_name[];
+    char d_name[129];
 };
 typedef struct DIR DIR;
 DIR* opendir(const char *name);
