@@ -144,3 +144,6 @@ float       scalbnf( float arg, int exp );
 
 long lrintf ( float num );
 long lrint ( double num );
+
+double round(double num);
+float roundf(float num);

@@ -360,3 +360,13 @@ pub extern "C" fn lrintf(num: f32) -> i64 {
 pub extern "C" fn lrint(num: f64) -> i64 {
     core::f64::math::round_ties_even(num) as i64
 }
+
+#[unsafe(no_mangle)]
+pub extern "C" fn round(num: f64) -> f64 {
+    libm::round(num)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn roundf(num: f32) -> f32 {
+    libm::roundf(num)
+}
