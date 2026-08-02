@@ -94,6 +94,9 @@ struct FileUnbuffered {
 }
 
 impl FileUnbuffered {
+    pub fn ri(&self) -> Ri {
+        self.resource
+    }
     /// Writes `bytes` to file at the current position.
     fn write_unbuffered(&mut self, bytes: &[u8]) -> Result<usize, ErrorStatus> {
         let results = io::write(self.resource, self.offset, bytes)?;
@@ -164,6 +167,10 @@ pub struct File {
 }
 
 impl File {
+    pub fn ri(&self) -> Ri {
+        self.inner.ri()
+    }
+
     pub fn from_res(res: Ri, option: BufferingOption, from_end: bool) -> Self {
         let mut this = Self {
             inner: FileUnbuffered {

@@ -81,7 +81,7 @@ source = "git+https://github.com/SafaOS/safa-abi#1f22b731781f9309588d31242f374be
 [[package]]
 name = "safa-api"
 version = "0.6.1"
-source = "git+https://github.com/SafaOS/safa-api#d0ce2e239196f77371d8859fb101bf27c3a1103b"
+source = "git+https://github.com/SafaOS/safa-api#b36d25fe0a3bfbcbf8addfc8031bb0c2969c4097"
 dependencies = [
  "dlmalloc",
  "lock_api",

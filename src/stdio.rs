@@ -491,3 +491,8 @@ pub unsafe extern "C" fn sscanf(s: *const c_char, fmt: *const c_char, mut args: 
     );
     matched as c_int
 }
+
+#[unsafe(no_mangle)]
+pub extern "C" fn fileno(file: *mut File) -> c_int {
+    (unsafe { (*file).ri() }) as c_int
+}

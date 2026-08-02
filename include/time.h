@@ -59,3 +59,6 @@ typedef int clockid_t;
 int clock_getres(clockid_t clk_id, struct timespec *res);
 int clock_gettime(clockid_t clk_id, struct timespec *tp);
 int clock_settime(clockid_t clk_id, const struct timespec *tp);
+
+int nanosleep(const struct timespec *duration,
+              struct timespec *_Nullable rem);

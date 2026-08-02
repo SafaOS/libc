@@ -63,6 +63,7 @@ int rename(const char* old_filename, const char* new_filename);
 void clearerr(FILE *f);
 int ferror(FILE *f);
 int feof(FILE *f);
+int fileno(FILE *f);
 
 #define FILENAME_MAX 1024
 

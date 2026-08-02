@@ -1,6 +1,13 @@
-use core::ffi::{CStr, c_char, c_int, c_long};
+use core::{
+    ffi::{CStr, c_char, c_int, c_long},
+    time::Duration,
+};
 
-use safa_api::{abi::clock::Clock, errors::ErrorStatus, syscalls::clock};
+use safa_api::{
+    abi::clock::Clock,
+    errors::ErrorStatus,
+    syscalls::{clock, thread::sleep},
+};
 
 use crate::{errno::set_error, try_errno};
 
@@ -262,5 +269,21 @@ pub extern "C" fn clock_settime(clockid: ClockId, tp: *const TimeSpec) -> c_int 
         clock::clock_settime(clock, unsafe { (*tp).to_duration() }),
         -1
     );
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn nanosleep(timespec: *const TimeSpec, rem: *mut TimeSpec) -> c_int {
+    if sleep(unsafe { (*timespec).to_duration() }).is_err() {
+        set_error(ErrorStatus::InvalidArgument);
+        return -1;
+    }
+
+    // No signals! rem will always be zero.
+    if !rem.is_null() {
+        unsafe {
+            *rem = TimeSpec::from_duration(Duration::ZERO);
+        }
+    }
     0
 }
