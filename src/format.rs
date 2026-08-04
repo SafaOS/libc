@@ -54,15 +54,15 @@ macro_rules! try_fmt {
     ($expr: expr) => {{ map_error($expr)? }};
 }
 
-struct CPrinter<'a, 'fmt, 'b, 'f, W: CWriter> {
+struct CPrinter<'a, 'fmt, 'b, W: CWriter> {
     writer: &'a mut W,
     wrote: usize,
     curr_index: usize,
     fmt: &'fmt [u8],
-    var_args: core::ffi::VaList<'b, 'f>,
+    var_args: core::ffi::VaList<'b>,
 }
 
-impl<'a, 'fmt, 'b, 'f, T: CWriter> CWriter for CPrinter<'a, 'fmt, 'b, 'f, T> {
+impl<'a, 'fmt, 'b, T: CWriter> CWriter for CPrinter<'a, 'fmt, 'b, T> {
     fn write_bytes(&mut self, bytes: &[u8]) -> Result<usize, ErrorStatus> {
         let am = self.writer.write_bytes(bytes)?;
         self.wrote += bytes.len();
@@ -70,7 +70,7 @@ impl<'a, 'fmt, 'b, 'f, T: CWriter> CWriter for CPrinter<'a, 'fmt, 'b, 'f, T> {
     }
 }
 
-impl<'a, 'fmt, 'b, 'f, T: CWriter> Write for CPrinter<'a, 'fmt, 'b, 'f, T> {
+impl<'a, 'fmt, 'b, T: CWriter> Write for CPrinter<'a, 'fmt, 'b, T> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         map_error(self.write_bytes(s.as_bytes()).map(|_| ()))
     }
@@ -146,8 +146,8 @@ macro_rules! match_arg {
 
 }
 
-impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
-    fn new(writer: &'a mut W, fmt: &'fmt [u8], var_args: core::ffi::VaList<'b, 'f>) -> Self {
+impl<'a, 'fmt, 'b, W: CWriter> CPrinter<'a, 'fmt, 'b, W> {
+    fn new(writer: &'a mut W, fmt: &'fmt [u8], var_args: core::ffi::VaList<'b>) -> Self {
         Self {
             writer,
             wrote: 0,
@@ -172,7 +172,7 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
     }
 
     unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
-        unsafe { self.var_args.arg() }
+        unsafe { self.var_args.next_arg() }
     }
 
     fn next_float(
@@ -480,10 +480,10 @@ impl<'a, 'fmt, 'b, 'f, W: CWriter> CPrinter<'a, 'fmt, 'b, 'f, W> {
     }
 }
 
-pub fn printf_to<'a, 'fmt, 'b, 'f, W: CWriter>(
+pub fn printf_to<'a, 'fmt, 'b, W: CWriter>(
     writer: &'a mut W,
     fmt: &'fmt [u8],
-    var_args: core::ffi::VaList<'b, 'f>,
+    var_args: core::ffi::VaList<'b>,
 ) -> Result<usize, core::fmt::Error> {
     let printer = CPrinter::new(writer, fmt, var_args);
     printer.write_all()

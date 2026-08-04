@@ -240,20 +240,6 @@ pub extern "C" fn strncmp(s1: *const u8, s2: *const u8, n: usize) -> c_int {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> c_int {
-    unsafe {
-        for i in 0..n {
-            let a = *s1.add(i);
-            let b = *s2.add(i);
-            if a != b {
-                return (a as c_int) - (b as c_int);
-            }
-        }
-        0
-    }
-}
-
-#[unsafe(no_mangle)]
 pub extern "C" fn strpbrk(s: *const u8, accept: *const u8) -> *mut u8 {
     unsafe {
         let alen = strlen(accept as *const c_char);

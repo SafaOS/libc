@@ -9,5 +9,5 @@ pub extern "C" fn signal() -> extern "C" fn(c_int) {
 }
 
 pub extern "C" fn signal_stub_handler(n: c_int) {
-    printerrln!("SIGNAL_STUB({n})")
+    printerrln!("SIGNAL_STUB({n})");
 }

@@ -149,7 +149,7 @@ pub fn scanf_from<R: CReader>(
             let num_str = unsafe { str::from_utf8_unchecked(&num_raw) };
             let num = <$ty>::from_str_radix(num_str, $radix).expect("Failed to parse an integer");
             unsafe {
-                var_args.arg::<*mut $ty>().write(num as $ty);
+                var_args.next_arg::<*mut $ty>().write(num as $ty);
             }
 
             matched += 1;
@@ -165,7 +165,7 @@ pub fn scanf_from<R: CReader>(
             let num_str = unsafe { str::from_utf8_unchecked(&num_raw) };
             let num = num_str.parse::<$ty>().unwrap_or_else(|_| 0.);
             unsafe {
-                var_args.arg::<*mut $ty>().write(num as $ty);
+                var_args.next_arg::<*mut $ty>().write(num as $ty);
             }
 
             matched += 1;
@@ -235,7 +235,7 @@ pub fn scanf_from<R: CReader>(
                 }
                 b's' => {
                     let next_char = fmt_iter.peek().copied().unwrap_or(&b'\0');
-                    let ptr = unsafe { var_args.arg::<*mut c_char>() };
+                    let ptr = unsafe { var_args.next_arg::<*mut c_char>() };
                     let mut pos = 0;
                     while let Some(c) = reader.read_byte()? {
                         if c == *next_char {

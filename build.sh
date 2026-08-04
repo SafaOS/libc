@@ -12,7 +12,7 @@ set -euo pipefail
 
 rustup component add rust-src --toolchain nightly-2025-10-11
 crt0="src/crt0/$target.o"
-salibc=$(cargo rustc --crate-type=staticlib --target "target-$target.json" --release --message-format=json-render-diagnostics -- -C force-unwind-tables | jq -r 'select(.reason == "compiler-artifact" and (.target.kind | index("staticlib"))) | .filenames[] | select(endswith(".a"))')
+salibc=$(cargo rustc --crate-type=staticlib --target "target-$target.json" --release -Zjson-target-spec --message-format=json-render-diagnostics -- -C force-unwind-tables | jq -r 'select(.reason == "compiler-artifact" and (.target.kind | index("staticlib"))) | .filenames[] | select(endswith(".a"))')
 
 mkdir -p out
 cp $salibc out/libc.a
